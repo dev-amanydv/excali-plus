@@ -17,6 +17,7 @@ export const authMiddleware = (
     );
   }
   const token = req.cookies.token;
+  console.log("token: ", token)
   if (!token) {
     throw new BadRequestError("Authentication required. Please login.");
   }

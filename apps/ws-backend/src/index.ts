@@ -34,7 +34,6 @@ function authenticateUser(token: string) {
 
 wss.on("connection", (ws, request) => {
   console.log("new client connected");
-
   const url = request.url;
   if (!url) return;
 
@@ -52,13 +51,15 @@ wss.on("connection", (ws, request) => {
     ws,
   });
 
+  console.log(users)
+
   ws.on("message", async function message(data) {
     const parsedData = JSON.parse(data as unknown as string);
 
     if (parsedData.type === "join-room") {
-      console.log({ users });
       const user = users.find((x) => x.ws === ws);
       user?.rooms.push(parsedData.roomId);
+      console.log("AFTER", users);
       user?.ws.send(
         JSON.stringify({
           msg: `Room: ${parsedData.roomId} joined!`,

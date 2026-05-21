@@ -20,7 +20,6 @@ model User {
   email     String   @unique
   avatar    String?
   rooms     Room[]
-  Elements  Elements[]
   createdAt DateTime @default(now())
 }
 
@@ -30,15 +29,51 @@ model Room {
   slug      String   @unique
   createdAt DateTime @default(now())
   adminId   String
-  Elements  Elements[]
   admin     User     @relation(fields: [adminId], references: [id])
+  elements  Elements[]
 }
 
 model Elements {
-  id      Int    @unique @default(autoincrement())
-  message String
-  roomId  Int
-  userId  String
-  room    Room   @relation(fields: [roomId], references: [id])
-  user    User   @relation(fields: [userId], references: [id])
+  id                 Int     @unique @default(autoincrement())
+  type               String
+  edgeStyle          String?
+  boundTextElementId String?
+  points             Json?
+  startArrowHead     String?
+  endArrowHead       String?
+  startBinding       Json?
+  endBinding         Json?
+  simulatePressure   Boolean?
+  pressures          Float[]  @default([])
+  text               String?
+  fontSize           Int?
+  fontFamily         String?
+  textAlign          String?
+  verticalAlign      String?
+  fontWeight         String?
+  lineHeight         Float?
+  isEditing          Boolean?
+  autoResize         Boolean?
+  originalText       String?
+  containerId        String?
+  x                  Float
+  y                  Int
+  width              Float
+  height             Float
+  angle              Float
+  strokeColor        String
+  backgroundColor    String
+  fillStyle          String
+  strokeStyle        String
+  strokeWidth        String
+  opacity            Float
+  roughness          Float
+  isDeleted          Boolean
+  seed               Int
+  version            Int
+  createdAt          Int
+  updatedAt          Int
+  isLocked           Boolean
+  roomId             Int
+  room               Room      @relation(fields: [roomId], references: [id])
 }
