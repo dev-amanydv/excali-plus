@@ -1,0 +1,15 @@
+services:
+  db:
+    container_name: shared-canvas
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: dev-amanydv
+      POSTGRES_PASSWORD: shared-canvas
+      POSTGRES_DB: canvas-db
+    volumes:
+      - pgdata:/var/lib/postgresql
+    ports:
+      - "5432:5432"
+
+volumes:
+  pgdata:
