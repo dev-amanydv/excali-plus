@@ -20,6 +20,7 @@ model User {
   email     String   @unique
   avatar    String?
   rooms     Room[]
+  elements  Elements[]
   createdAt DateTime @default(now())
 }
 
@@ -75,5 +76,7 @@ model Elements {
   updatedAt          Int
   isLocked           Boolean
   roomId             Int
+  userId             String
+  user               User      @relation(fields: [userId], references: [id])
   room               Room      @relation(fields: [roomId], references: [id])
 }

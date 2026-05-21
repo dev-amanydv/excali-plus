@@ -78,22 +78,20 @@ wss.on("connection", (ws, request) => {
 
     if (parsedData.type === "chat") {
       const roomId = parsedData.roomId;
-      const message = parsedData.message;
-      console.log(parsedData)
+      const { id, type, edgeStyle, boundTextElementId, points, startArrowHead, endArrowHead, startBinding, endBinding, simulatePressure, pressures, text, fontSize, fontFamily, textAlign, verticalAlign, fontWeight, lineHeight, isEditing, autoResize, originalText, containerId, x, y, width, height, angle, strokeColor, strokeStyle, backgroundColor, fillStyle, strokeWidth, opacity, roughness, isDeleted, seed, version, createdAt, updatedAt, isLocked } = parsedData;
+
+      console.log(parsedData);
+
       try {
-        const res = await prismaClient.chat.create({
-          data: {
-            message: message,
-            roomId: Number(roomId),
-            userId: userId,
-          },
+        const res = await prismaClient.elements.create({
+          data: parsedData,
         });
 
         users.forEach((user) => {
           if (user.rooms.includes(roomId)) {
             user.ws.send(
               JSON.stringify({
-                type: "chat",
+                type: "element",
                 message: res.message,
                 roomId: res.roomId,
                 userId: res.userId,
