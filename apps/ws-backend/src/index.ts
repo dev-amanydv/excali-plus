@@ -76,7 +76,7 @@ wss.on("connection", (ws, request) => {
       user.ws.send(`Room: ${parsedData.roomId} leaved successfully`);
     }
 
-    if (parsedData.type === "chat") {
+    if (parsedData.type === "draw") {
       const roomId = parsedData.roomId;
       const { id, type, edgeStyle, boundTextElementId, points, startArrowHead, endArrowHead, startBinding, endBinding, simulatePressure, pressures, text, fontSize, fontFamily, textAlign, verticalAlign, fontWeight, lineHeight, isEditing, autoResize, originalText, containerId, x, y, width, height, angle, strokeColor, strokeStyle, backgroundColor, fillStyle, strokeWidth, opacity, roughness, isDeleted, seed, version, createdAt, updatedAt, isLocked } = parsedData;
 
@@ -84,18 +84,15 @@ wss.on("connection", (ws, request) => {
 
       try {
         const res = await prismaClient.elements.create({
-          data: parsedData,
+          data: parsedData.data,
         });
-
+        console.log("RESPONSE: ", res)
         users.forEach((user) => {
           if (user.rooms.includes(roomId)) {
             user.ws.send(
               JSON.stringify({
-                type: "element",
-                message: res.message,
-                roomId: res.roomId,
-                userId: res.userId,
-                id: res.id
+                type: "draw",
+                data: parsedData.data
               }),
             );
           }

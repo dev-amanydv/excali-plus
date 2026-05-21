@@ -72,8 +72,8 @@ model Elements {
   isDeleted          Boolean
   seed               Int
   version            Int
-  createdAt          Int
-  updatedAt          Int
+  createdAt          DateTime
+  updatedAt          DateTime
   isLocked           Boolean
   roomId             Int
   userId             String
