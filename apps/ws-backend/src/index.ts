@@ -77,7 +77,7 @@ wss.on("connection", (ws, request) => {
     }
 
     if (parsedData.type === "draw") {
-      const roomId = parsedData.roomId;
+      const roomId = parsedData.data.roomId;
       const { id, type, edgeStyle, boundTextElementId, points, startArrowHead, endArrowHead, startBinding, endBinding, simulatePressure, pressures, text, fontSize, fontFamily, textAlign, verticalAlign, fontWeight, lineHeight, isEditing, autoResize, originalText, containerId, x, y, width, height, angle, strokeColor, strokeStyle, backgroundColor, fillStyle, strokeWidth, opacity, roughness, isDeleted, seed, version, createdAt, updatedAt, isLocked } = parsedData;
 
       console.log(parsedData);
@@ -87,8 +87,11 @@ wss.on("connection", (ws, request) => {
           data: parsedData.data,
         });
         console.log("RESPONSE: ", res)
+        console.log("sent roomId: ", roomId, " type: ", typeof(roomId))
         users.forEach((user) => {
           if (user.rooms.includes(roomId)) {
+            console.log("act roomId: ", user.rooms)
+            console.log(user)
             user.ws.send(
               JSON.stringify({
                 type: "draw",

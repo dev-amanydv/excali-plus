@@ -15,7 +15,7 @@ export function RoomCanvas ({roomId}: {
             setSocket(ws);
             ws.send(JSON.stringify({
                 type: "join-room",
-                roomId: roomId
+                roomId: Number(roomId)
             }))
         }
     }, [])

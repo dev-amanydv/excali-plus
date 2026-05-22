@@ -53,13 +53,14 @@ export default function Canvas({
   }, [roomId, dispatch]);
 
   useEffect(() => {
-    // socket.onmessage = (event) => {
-    //     const message = JSON.parse(event.data);
-    //     if (message.type === "chat"){
-    //         const element = JSON.parse(message.message);
-    //         dispatch(addElement(element))
-    //     }
-    // }
+    socket.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        console.log(message)
+        if (message.type === "chat"){
+            const element = JSON.parse(message.message);
+            dispatch(addElement(element))
+        }
+    }
   }, [socket, dispatch]);
 
   useCanvasDraw(canvasRef, socket, roomId);
