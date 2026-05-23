@@ -54,10 +54,12 @@ export default function Canvas({
 
   useEffect(() => {
     socket.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        console.log(message)
-        if (message.type === "chat"){
-            const element = JSON.parse(message.message);
+        const parsedData = JSON.parse(event.data);
+        console.log(parsedData)
+        if (parsedData.type === "draw"){
+            console.log("getting element")
+            const element = parsedData.data;
+            console.log("element: ", element)
             dispatch(addElement(element))
         }
     }

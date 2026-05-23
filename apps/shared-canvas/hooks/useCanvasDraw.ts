@@ -177,6 +177,7 @@ export function useCanvasDraw(
         );
         dispatch(addElement(newRect));
         activeId.current = newRect.id;
+        
       }
       if (activeTool === "circle") {
         dispatch(
