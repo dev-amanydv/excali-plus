@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Nav from "./Nav";
 import ToolOptionsPanel from "./ToolOptionsPanel";
 import { useAppDispatch, useAppSelector } from "@/store/store";
@@ -32,9 +32,17 @@ export default function Canvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dispatch = useAppDispatch();
   const activeTool = useAppSelector(selectActiveTool);
+  const [size, setSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    if (!roomId) return;
+    const update = () =>
+      setSize({ width: window.innerWidth, height: window.innerHeight });
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  useEffect(() => {
     const loadExisting = async () => {
       // const res = await axios.get(`${HTTP_BACKEND}/chats/${roomId}`);
       // const messages = res.data.data.chats;
@@ -80,8 +88,8 @@ export default function Canvas({
       <ToolOptionsPanel />
       <canvas
         id="canvas"
-        width={window.innerWidth}
-        height={window.innerHeight}
+        width={size.width}
+        height={size.height}
         style={{
           cursor: CURSOR_MAP[activeTool] ?? "crosshair",
           imageRendering: "pixelated",
