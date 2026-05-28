@@ -39,7 +39,7 @@ wss.on("connection", (ws, request) => {
 
   const queryParams = new URLSearchParams(url?.split("?")[1]);
   const token = queryParams.get("token") ?? "";
-  const userId = authenticateUser(token);
+  const userId = authenticateUser(token) as string;
   if (!userId) {
     ws.close();
     return;
@@ -51,14 +51,15 @@ wss.on("connection", (ws, request) => {
     ws,
   });
 
-  console.log(users)
+  console.log("Connected Clients: ", users)
 
   ws.on("message", async function message(data) {
-    const parsedData = JSON.parse(data as unknown as string);
-
+    const parsedData = JSON.parse(data.toString());
     if (parsedData.type === "join-room") {
       const user = users.find((x) => x.ws === ws);
-      user?.rooms.push(parsedData.roomId);
+      if (!user?.rooms.includes(parsedData.roomId)){
+        user?.rooms.push(parsedData.roomId)
+      }
       console.log("AFTER", users);
       user?.ws.send(
         JSON.stringify({
@@ -78,13 +79,9 @@ wss.on("connection", (ws, request) => {
 
     if (parsedData.type === "draw") {
       const roomId = parsedData.data.roomId;
-      const { id, type, edgeStyle, boundTextElementId, points, startArrowHead, endArrowHead, startBinding, endBinding, simulatePressure, pressures, text, fontSize, fontFamily, textAlign, verticalAlign, fontWeight, lineHeight, isEditing, autoResize, originalText, containerId, x, y, width, height, angle, strokeColor, strokeStyle, backgroundColor, fillStyle, strokeWidth, opacity, roughness, isDeleted, seed, version, createdAt, updatedAt, isLocked } = parsedData;
-
-      console.log(parsedData);
-
       try {
         const res = await prismaClient.elements.create({
-          data: parsedData.data,
+          data: {...parsedData.data, userId},
         });
         console.log("RESPONSE: ", res)
         console.log("sent roomId: ", roomId, " type: ", typeof(roomId))

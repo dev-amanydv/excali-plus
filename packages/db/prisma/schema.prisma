@@ -35,7 +35,7 @@ model Room {
 }
 
 model Elements {
-  id                 Int     @unique @default(autoincrement())
+  id                 String     @unique 
   type               String
   edgeStyle          String?
   boundTextElementId String?

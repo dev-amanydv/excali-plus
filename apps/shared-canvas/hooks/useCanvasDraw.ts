@@ -177,6 +177,12 @@ export function useCanvasDraw(
         );
         dispatch(addElement(newRect));
         activeId.current = newRect.id;
+        socket.send(JSON.stringify({
+          type: "draw",
+          data: {
+            ...newRect, roomId: roomId
+          }
+        }))
         
       }
       if (activeTool === "circle") {
@@ -508,22 +514,12 @@ export function useCanvasDraw(
           }),
         );
 
-        const finalElement = {
-          id: activeId.current,
-          type: "rectangle",
-          startX: startX.current,
-          startY: startY.current,
-          width: width,
-          height: height,
-        };
-
-        // socket.send(
-        //   JSON.stringify({
-        //     type: "chat",
-        //     message: JSON.stringify(finalElement),
-        //     roomId,
-        //   }),
-        // );
+        socket.send(JSON.stringify({
+          type: "draw",
+          data: {
+            ...newRect, roomId: roomId
+          }
+        }))
       }
       if (activeTool === "circle") {
         dispatch(
