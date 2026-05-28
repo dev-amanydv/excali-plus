@@ -1,12 +1,9 @@
 "use client";
-import { initDraw } from "@/draw";
 import { useEffect, useRef } from "react";
 import Nav from "./Nav";
 import ToolOptionsPanel from "./ToolOptionsPanel";
 import { useAppDispatch, useAppSelector } from "@/store/store";
 import { selectActiveTool } from "@/store/selectors";
-import axios from "axios";
-import { HTTP_BACKEND } from "@/config";
 import { addElement, loadElements } from "@/store/slices/canvasSlice";
 import { useCanvasDraw } from "@/hooks/useCanvasDraw";
 import ExcalidrawMenu from "./MenuOptions";
@@ -29,14 +26,15 @@ export default function Canvas({
   roomId,
   socket,
 }: {
-  roomId: string;
-  socket: WebSocket;
+  roomId?: string | null;
+  socket?: WebSocket | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dispatch = useAppDispatch();
   const activeTool = useAppSelector(selectActiveTool);
 
   useEffect(() => {
+    if (!roomId) return;
     const loadExisting = async () => {
       // const res = await axios.get(`${HTTP_BACKEND}/chats/${roomId}`);
       // const messages = res.data.data.chats;
@@ -53,10 +51,11 @@ export default function Canvas({
   }, [roomId, dispatch]);
 
   useEffect(() => {
+    if (!socket) return;
     socket.onmessage = (event) => {
         const parsedData = JSON.parse(event.data);
         console.log(parsedData)
-        if (parsedData.type === "draw"){
+        if (parsedData.type === "onMouseUp"){
             console.log("getting element")
             const element = parsedData.data;
             console.log("element: ", element)

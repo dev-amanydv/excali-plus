@@ -57,7 +57,7 @@ wss.on("connection", (ws, request) => {
     const parsedData = JSON.parse(data.toString());
     if (parsedData.type === "join-room") {
       const user = users.find((x) => x.ws === ws);
-      if (!user?.rooms.includes(parsedData.roomId)){
+      if (!user?.rooms.includes(parsedData.roomId)) {
         user?.rooms.push(parsedData.roomId)
       }
       console.log("AFTER", users);
@@ -77,14 +77,9 @@ wss.on("connection", (ws, request) => {
       user.ws.send(`Room: ${parsedData.roomId} leaved successfully`);
     }
 
-    if (parsedData.type === "draw") {
+    if (parsedData.type === "onMouseDown") {
       const roomId = parsedData.data.roomId;
       try {
-        const res = await prismaClient.elements.create({
-          data: {...parsedData.data, userId},
-        });
-        console.log("RESPONSE: ", res)
-        console.log("sent roomId: ", roomId, " type: ", typeof(roomId))
         users.forEach((user) => {
           if (user.rooms.includes(roomId)) {
             console.log("act roomId: ", user.rooms)
@@ -92,6 +87,50 @@ wss.on("connection", (ws, request) => {
             user.ws.send(
               JSON.stringify({
                 type: "draw",
+                data: parsedData.data
+              }),
+            );
+          }
+        });
+      } catch (error) {
+        console.log("Error in broadcsting event: ", error);
+      }
+    }
+    if (parsedData.type === "onMouseMove") {
+      const roomId = parsedData.data.roomId;
+      try {
+        users.forEach((user) => {
+          if (user.rooms.includes(roomId)) {
+            console.log("act roomId: ", user.rooms)
+            console.log(user)
+            user.ws.send(
+              JSON.stringify({
+                type: "draw",
+                data: parsedData.data
+              }),
+            );
+          }
+        });
+      } catch (error) {
+        console.log("Error in broadcsting event: ", error);
+      }
+    }
+
+    if (parsedData.type === "onMouseUp") {
+      const roomId = parsedData.data.roomId;
+      try {
+        const res = await prismaClient.elements.create({
+          data: { ...parsedData.data, createdAt: new Date(), updatedAt: new Date(), userId },
+        });
+        console.log("RESPONSE: ", res)
+        console.log("sent roomId: ", roomId, " type: ", typeof (roomId))
+        users.forEach((user) => {
+          if (user.rooms.includes(roomId)) {
+            console.log("act roomId: ", user.rooms)
+            console.log(user)
+            user.ws.send(
+              JSON.stringify({
+                type: "onMouseUp",
                 data: parsedData.data
               }),
             );

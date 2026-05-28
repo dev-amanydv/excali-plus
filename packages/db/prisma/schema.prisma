@@ -66,7 +66,7 @@ model Elements {
   backgroundColor    String
   fillStyle          String
   strokeStyle        String
-  strokeWidth        String
+  strokeWidth        Int      @default(2)
   opacity            Float
   roughness          Float
   isDeleted          Boolean

@@ -5,7 +5,7 @@ import Canvas from "../Canvas"
 
 
 export function RoomCanvas ({roomId}: {
-    roomId: string
+    roomId?: string | null
 }) {
     const [socket, setSocket] = useState<WebSocket | null>(null)
 
@@ -20,7 +20,7 @@ export function RoomCanvas ({roomId}: {
         }
     }, [])
 
-    if (!socket){
+    if (roomId && !socket){
         return <div>
             Connecting to server
         </div>

@@ -75,8 +75,8 @@ function calculateCombinedBoundingBox(
 
 export function useCanvasDraw(
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
-  socket: WebSocket,
-  roomId: string,
+  socket?: WebSocket | null,
+  roomId?: string | null,
 ) {
   const dispatch = useAppDispatch();
   const activeTool = useAppSelector(selectActiveTool);
@@ -177,13 +177,6 @@ export function useCanvasDraw(
         );
         dispatch(addElement(newRect));
         activeId.current = newRect.id;
-        socket.send(JSON.stringify({
-          type: "draw",
-          data: {
-            ...newRect, roomId: roomId
-          }
-        }))
-        
       }
       if (activeTool === "circle") {
         dispatch(
@@ -513,13 +506,15 @@ export function useCanvasDraw(
             },
           }),
         );
-
-        socket.send(JSON.stringify({
-          type: "draw",
+        const finalEl = store.getState().canvas.elements.find((el) => el.id === activeId.current)
+        if (finalEl && socket && roomId){
+          socket.send(JSON.stringify({
+          type: "onMouseUp",
           data: {
-            ...newRect, roomId: roomId
+            ...finalEl, roomId: Number(roomId)
           }
         }))
+        }
       }
       if (activeTool === "circle") {
         dispatch(
