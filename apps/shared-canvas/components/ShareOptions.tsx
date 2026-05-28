@@ -1,6 +1,8 @@
-import { Play } from "next/font/google";
 import { useState } from "react";
 import { IconCopy, IconLink, IconPlayerPlay, IconPlayerStop, IconPlayerStopFilled } from "@tabler/icons-react";
+import axios from "axios";
+import { HTTP_BACKEND } from "@/config";
+import { randomUUID } from "crypto";
 
 export default function ShareOption() {
   const [open, setOpen] = useState(false);
@@ -25,7 +27,7 @@ const DialogBox = ({ setOpen }: { setOpen: (str: boolean) => void }) => {
     setOpen(false);
     setStep(1)
   }
-  
+
   const renderBox = () => {
     switch (step) {
       case 1:
@@ -53,6 +55,14 @@ const OptionBox = ({
   setStep: (num: number) => void;
   handleClose: () => void;
 }) => {
+  const handleSession = async () => {
+    const res = await axios.post(`${HTTP_BACKEND}/rooms/create`, {
+      id: randomUUID()
+    })
+    
+    console.log("ROOM: ", res)
+    setStep(2)
+  }
   return (
     <div
       onClick={(e) => e.stopPropagation()}
@@ -71,7 +81,7 @@ const OptionBox = ({
         </div>
         <button
           className="rounded-xl gap-2 items-center font-semibold flex w-fit bg-[#6866D4] cursor-pointer text-white hover:bg-[#5B57CA] px-5 py-[14px] text-sm"
-          onClick={() => setStep(2)}
+          onClick={handleSession}
         >
           <span>
             <IconPlayerPlay size={18} stroke={2} />
@@ -106,12 +116,20 @@ const OptionBox = ({
 };
 
 const CollabBox = (
-    {
-  handleClose
-}: {
-  handleClose: () => void;
-}
+  {
+    handleClose
+  }: {
+    handleClose: () => void;
+  }
 ) => {
+  function generateRoomId() {
+    return Math.floor(100000 + Math.random() * 900000)
+  }
+
+  const handleCopy = () => {
+    window.navigator.clipboard
+  }
+
   return (
     <div onClick={(e) => e.stopPropagation()} className=" flex gap-5 flex-col items-start fixed max-w-[548px] w-full max-h-[736px] h-full rounded-2xl p-[40px] z-20 bg-white border-neutral-400 ">
       <h1 className="font-extrabold text-xl">Live Collaboration</h1>

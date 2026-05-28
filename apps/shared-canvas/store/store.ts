@@ -5,6 +5,7 @@ import toolReducer from "./slices/toolSlice";
 import historyReducer from "./slices/historySlice";
 import selectionReducer from "./slices/selectionSlice";
 import uiReducer from "./slices/uiSlice";
+import userReducer from "./slices/userSlice"
 import { historyMiddleware } from "./historyMiddleware";
 
 export const store = configureStore({
@@ -14,6 +15,7 @@ export const store = configureStore({
     history: historyReducer,
     selection: selectionReducer,
     ui: uiReducer,
+    user: userReducer
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

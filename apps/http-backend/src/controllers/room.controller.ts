@@ -4,58 +4,35 @@ import { prismaClient } from "@repo/db/client";
 import { Request, Response } from "express";
 import AsyncHandler from "../utils/AsyncHandler.js";
 
+async function generateRoomId() {
+    const roomId = 0
+    while (true) {
+        const roomId = Math.floor(100000 + Math.random() * 900000)
+        const roomExist = await prismaClient.room.findUnique({
+            where: {
+                id: roomId
+            }
+        })
+        if (!roomExist) break
+    }
+    return roomId
+}
+
 export const handleCreateRoom = AsyncHandler(async (req: Request, res: Response) => {
-    const parsedData = CreateRoomSchema.safeParse(req.body);
-    if (!parsedData.success){
-        throw new BadRequestError('Invalid body type')
-    }
-
-    const userId = req.userId || "";
-    
-    const roomExist = await prismaClient.room.findUnique({
-        where: {
-            slug: parsedData.data.slug
-        }
-    });
-    if (roomExist) {
-        throw new ConflictError('Slug not available')
-    }
-
+    const id = req.body;
+    if (!id) return
+    const roomId = await generateRoomId();
     const room = await prismaClient.room.create({
         data: {
-            slug: parsedData.data.slug,
-            name: parsedData.data.name,
-            adminId: userId
+            id: roomId,
+            adminId: id
         }
     });
 
     res.status(203).json({
         msg: "Room created successfully!",
         data: {
-            room: {
-                roomId: room.id,
-                slug: room.slug,
-                name: room.name,
-            }
-        }
-    })
-})
-
-export const getRoomId = AsyncHandler(async (req, res) => {
-    const slug = req.params.slug as string;
-
-    const room = await prismaClient.room.findUnique({
-        where: {
-            slug
-        }
-    });
-    if (!room){
-        throw new NotFoundError('Room does not exist')
-    }
-    res.status(200).json({
-        msg: "Fetched roomId successfully",
-        data: {
-            roomId: room?.id
+            roomId: room
         }
     })
 })
