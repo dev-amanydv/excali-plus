@@ -4,5 +4,5 @@ import { authMiddleware } from "../middlewares/auth.middleware.js";
 
 const router: Router = Router();
 
-router.post('/create', handleCreateRoom);
+router.post('/create',authMiddleware, handleCreateRoom);
 export default router;

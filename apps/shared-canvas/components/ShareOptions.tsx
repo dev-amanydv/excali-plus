@@ -2,11 +2,15 @@ import { useState } from "react";
 import { IconCopy, IconLink, IconPlayerPlay, IconPlayerStop, IconPlayerStopFilled } from "@tabler/icons-react";
 import axios from "axios";
 import { HTTP_BACKEND } from "@/config";
-import { randomUUID } from "crypto";
+import { useRouter } from "next/navigation";
+import { store } from "@/store/store";
+import { LucideLogIn } from "lucide-react";
+import AuthBox from "./AuthBox";
 
 export default function ShareOption() {
   const [open, setOpen] = useState(false);
-
+  const router = useRouter();
+  
   return (
     <div className="relative w-full h-full">
       <button
@@ -22,6 +26,7 @@ export default function ShareOption() {
 
 const DialogBox = ({ setOpen }: { setOpen: (str: boolean) => void }) => {
   const [step, setStep] = useState(1);
+  const user = store.getState().user;
 
   const handleClose = () => {
     setOpen(false);
@@ -33,7 +38,7 @@ const DialogBox = ({ setOpen }: { setOpen: (str: boolean) => void }) => {
       case 1:
         return <OptionBox setStep={setStep} handleClose={handleClose} />;
       case 2:
-        return <CollabBox handleClose={handleClose} />;
+        return user.userId ? <CollabBox handleClose={handleClose} /> : <AuthBox/>;
       case 3:
         return <ShareBox />;
     }
@@ -55,12 +60,9 @@ const OptionBox = ({
   setStep: (num: number) => void;
   handleClose: () => void;
 }) => {
+  const user = store.getState().user;
+  console.log(user)
   const handleSession = async () => {
-    const res = await axios.post(`${HTTP_BACKEND}/rooms/create`, {
-      id: randomUUID()
-    })
-    
-    console.log("ROOM: ", res)
     setStep(2)
   }
   return (
@@ -72,14 +74,15 @@ const OptionBox = ({
         <h1 className="text-center text-lg font-extrabold text-[#6866D4]">
           Live Collaboration
         </h1>
-        <div className="text-xs tracking-wider font-thin flex flex-col gap-4 text-center">
+        <div className="text-xs font-medium flex flex-col gap-4 text-center">
           <p className="">Invite people to collaborate on your drawing.</p>
           <p>
             Don't worry, the session is end to end encrypted, and fully private.
             Not even our server can see what you draw.
           </p>
         </div>
-        <button
+        {
+          user.userId ? <button
           className="rounded-xl gap-2 items-center font-semibold flex w-fit bg-[#6866D4] cursor-pointer text-white hover:bg-[#5B57CA] px-5 py-[14px] text-sm"
           onClick={handleSession}
         >
@@ -87,7 +90,16 @@ const OptionBox = ({
             <IconPlayerPlay size={18} stroke={2} />
           </span>
           Start session
+        </button> : <button
+          className="rounded-xl gap-2 items-center font-semibold flex w-fit bg-[#6866D4] cursor-pointer text-white hover:bg-[#5B57CA] px-5 py-[14px] text-sm"
+          onClick={handleSession}
+        >
+          <span>
+            <LucideLogIn stroke="white" size={20} />
+          </span>
+          Signup to continue
         </button>
+        }
       </div>
       <div className="flex items-center gap-3 w-full">
         <div className="h-px bg-neutral-300 w-full" />
@@ -98,7 +110,7 @@ const OptionBox = ({
         <h1 className="text-center text-lg font-extrabold text-[#6866D4]">
           Sharable Link
         </h1>
-        <div className="text-xs tracking-wider font-thin flex flex-col gap-4 text-center">
+        <div className="text-xs font-medium flex flex-col gap-4 text-center">
           <p className="">Export as read-only link.</p>
         </div>
         <button

@@ -2,12 +2,13 @@
 import { useEffect, useRef, useState } from "react";
 import Nav from "./Nav";
 import ToolOptionsPanel from "./ToolOptionsPanel";
-import { useAppDispatch, useAppSelector } from "@/store/store";
+import { store, useAppDispatch, useAppSelector } from "@/store/store";
 import { selectActiveTool } from "@/store/selectors";
 import { addElement, loadElements } from "@/store/slices/canvasSlice";
 import { useCanvasDraw } from "@/hooks/useCanvasDraw";
 import ExcalidrawMenu from "./MenuOptions";
 import ShareOption from "./ShareOptions";
+import { addUser } from "@/store/slices/userSlice";
 
 const CURSOR_MAP: Record<string, string> = {
   select: "default",
@@ -55,20 +56,26 @@ export default function Canvas({
       const elements = JSON.parse(rawElements)
       dispatch(loadElements({ elements, files: {} }));
     };
+    const loadUser = async () => {
+      const user = localStorage.getItem('user')
+      
+    }
     loadExisting();
+    loadUser()
   }, [roomId, dispatch]);
+
 
   useEffect(() => {
     if (!socket) return;
     socket.onmessage = (event) => {
-        const parsedData = JSON.parse(event.data);
-        console.log(parsedData)
-        if (parsedData.type === "onMouseUp"){
-            console.log("getting element")
-            const element = parsedData.data;
-            console.log("element: ", element)
-            dispatch(addElement(element))
-        }
+      const parsedData = JSON.parse(event.data);
+      console.log(parsedData)
+      if (parsedData.type === "onMouseUp") {
+        console.log("getting element")
+        const element = parsedData.data;
+        console.log("element: ", element)
+        dispatch(addElement(element))
+      }
     }
   }, [socket, dispatch]);
 

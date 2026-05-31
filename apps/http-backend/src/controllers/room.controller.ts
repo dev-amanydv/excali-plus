@@ -5,7 +5,6 @@ import { Request, Response } from "express";
 import AsyncHandler from "../utils/AsyncHandler.js";
 
 async function generateRoomId() {
-    const roomId = 0
     while (true) {
         const roomId = Math.floor(100000 + Math.random() * 900000)
         const roomExist = await prismaClient.room.findUnique({
@@ -13,26 +12,27 @@ async function generateRoomId() {
                 id: roomId
             }
         })
-        if (!roomExist) break
+        if (!roomExist) return roomId
     }
-    return roomId
 }
 
 export const handleCreateRoom = AsyncHandler(async (req: Request, res: Response) => {
-    const id = req.body;
+    const { id } = req.body;
+    const userId = req.userId as string;
+
     if (!id) return
     const roomId = await generateRoomId();
     const room = await prismaClient.room.create({
         data: {
             id: roomId,
-            adminId: id
+            adminId: userId
         }
     });
 
     res.status(203).json({
         msg: "Room created successfully!",
         data: {
-            roomId: room
+            room
         }
     })
 })
