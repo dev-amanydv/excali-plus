@@ -10,7 +10,17 @@ import { JWT_SECRET } from "@repo/backend-common/config";
 import bcrypt from "bcrypt";
 import AsyncHandler from "../utils/AsyncHandler.js";
 
+
+const google_client_secret = process.env.GOOGLE_CLIENT_SECRET!;
+
 export const handleSignup = AsyncHandler(async (req: Request, res: Response) => {
+  const type = req.query.type;
+  if (type == 'google') {
+    const credential = req.body.credential;
+    const decoded = jwt.verify(credential, google_client_secret)
+    console.log(decoded)
+  }
+  console.log(type)
   const parsedData = CreateUserSchema.safeParse(req.body);
   if (!parsedData.success) {
     throw new BadRequestError("Invalid body type");
@@ -71,7 +81,7 @@ export const handleSignup = AsyncHandler(async (req: Request, res: Response) => 
 
 export const handleLogin = AsyncHandler(async (req: Request, res: Response) => {
   const parsedData = SigninSchema.safeParse(req.body);
-  if (!parsedData.success){
+  if (!parsedData.success) {
     throw new BadRequestError("Invalid body type")
   }
 
@@ -81,12 +91,12 @@ export const handleLogin = AsyncHandler(async (req: Request, res: Response) => {
     }
   })
 
-  if (!user){
+  if (!user) {
     throw new BadRequestError("Invalid email or password")
   }
 
   const isPasswordValid = await bcrypt.compare(parsedData.data.password, user.password);
-  if (!isPasswordValid){
+  if (!isPasswordValid) {
     throw new BadRequestError('Invalid email or password')
   }
 
