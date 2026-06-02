@@ -255,7 +255,7 @@ export default function ExcalidrawMenu() {
 
             <div className="py-1.5">
               <MenuItem icon={<Icons.Excalidraw />} onClick={() => router.push('/')} label="Know more!" />
-              <MenuItem icon={<Icons.GitHub />} onClick={() => window.open("https://github.com/dev-amanydv/shared-canvas", "_blank", "noopener,noreferrer")}     label="GitHub" />
+              <MenuItem icon={<Icons.GitHub />} onClick={() => window.open("https://github.com/dev-amanydv/excali-plus", "_blank", "noopener,noreferrer")}     label="GitHub" />
               <MenuItem icon={<Icons.Twitter />} onClick={() => window.open("https://x.com/amandoestwt", "_blank", "noopener,noreferrer")}    label="Follow us" />
             </div>
 

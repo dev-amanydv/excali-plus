@@ -38,7 +38,7 @@ const DialogBox = ({ setOpen }: { setOpen: (str: boolean) => void }) => {
       case 1:
         return <OptionBox setStep={setStep} handleClose={handleClose} />;
       case 2:
-        return user.userId ? <CollabBox handleClose={handleClose} /> : <AuthBox/>;
+        return user.userId ? <CollabBox handleClose={handleClose} /> : <AuthBox handleClose={handleClose}/>;
       case 3:
         return <ShareBox />;
     }

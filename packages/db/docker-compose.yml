@@ -1,10 +1,10 @@
 services:
   db:
-    container_name: shared-canvas
+    container_name: excali-plus
     image: postgres:18-alpine
     environment:
       POSTGRES_USER: dev-amanydv
-      POSTGRES_PASSWORD: shared-canvas
+      POSTGRES_PASSWORD: excali-plus
       POSTGRES_DB: canvas-db
     volumes:
       - pgdata:/var/lib/postgresql

@@ -28,38 +28,57 @@ export const handleGoogleSession = AsyncHandler(async (req: Request, res: Respon
   }
   const userExist = await prismaClient.user.findUnique({
     where: {
-      email: payload?.email
+      email: payload?.email as string
+    }, select: {
+      id: true,
+      name: true,
+      avatar: true,
+      email: true,
     }
   })
   if (!userExist) {
     const newUser = await prismaClient.user.create({
       data: {
         name: payload?.name as string,
-        password: "",
+        provider: "GOOGLE",
         email: payload?.email as string,
         avatar: payload?.picture
+      },
+      select: {
+        id: true,
+        name: true,
+        avatar: true,
+        email: true,
       }
     })
     const refreshToken = jwt.sign({ email: newUser.email, id: newUser.id }, JWT_SECRET, {
       expiresIn: "7d",
       issuer: "ExcaliPlus",
-      audience: "Users",
+      audience: "User",
     });
 
     const accessToken = jwt.sign({ email: newUser.email, id: newUser.id }, JWT_SECRET, {
       expiresIn: "1h",
       issuer: "ExcaliPlus",
-      audience: "Users",
+      audience: "User",
     });
 
     res.cookie("token", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 1 * 60 * 60 * 10000,
+      sameSite: "none",
+      maxAge: 1 * 60 * 60 * 1000,
       path: "/"
     })
 
+    res.cookie("token", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+      maxAge: 1 * 60 * 60 * 1000,
+      path: "/"
+    })
+    
     return res.status(201).json({
       msg: "Account created successfully",
       data: {
@@ -71,27 +90,36 @@ export const handleGoogleSession = AsyncHandler(async (req: Request, res: Respon
   const refreshToken = jwt.sign({ email: userExist?.email, id: userExist?.id }, JWT_SECRET, {
     expiresIn: "7d",
     issuer: "ExcaliPlus",
-    audience: "Users",
+    audience: "User",
   });
 
+  await prismaClient.user.update({
+    where: {
+      id: userExist.id
+    },
+    data: {
+      refreshToken: refreshToken
+    }
+  })
   const accessToken = jwt.sign({ email: userExist?.email, id: userExist?.id }, JWT_SECRET, {
     expiresIn: "1h",
     issuer: "ExcaliPlus",
-    audience: "Users",
+    audience: "User",
   });
 
   res.cookie("token", accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 1 * 60 * 60 * 10000,
+    sameSite: "none",
+    maxAge: 1 * 60 * 60 * 1000,
     path: "/"
   })
 
   res.status(201).json({
     msg: "Logged in successfully",
     data: {
-
+      user: userExist,
+      refreshToken: refreshToken
     }
   })
 }
@@ -108,7 +136,9 @@ export const handleSignup = AsyncHandler(async (req: Request, res: Response) => 
       email: parsedData.data.email,
     },
   });
-
+  if (userExist && userExist.provider === "GOOGLE"){
+    throw new BadRequestError("use continue with google")
+  }
   if (userExist) {
     throw new ConflictError("User with this email already exists");
   }
@@ -140,7 +170,7 @@ export const handleSignup = AsyncHandler(async (req: Request, res: Response) => 
   const refreshToken = jwt.sign({ email: newUser.email, id: newUser.id }, JWT_SECRET, {
     expiresIn: "7d",
     issuer: "ExcaliPlus",
-    audience: "Users",
+    audience: "User",
   });
 
   await prismaClient.user.update({
@@ -158,13 +188,13 @@ export const handleSignup = AsyncHandler(async (req: Request, res: Response) => 
   }, JWT_SECRET, {
     expiresIn: '1h',
     issuer: "ExcaliPlus",
-    audience: "Users"
+    audience: "User"
   })
 
   res.cookie("token", accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "none",
     maxAge: 1 * 60 * 60 * 1000,
     path: "/",
   });
@@ -190,12 +220,14 @@ export const handleLogin = AsyncHandler(async (req: Request, res: Response) => {
       email: parsedData.data.email,
     },
   })
-
+  if (user && user.provider === "GOOGLE"){
+    throw new BadRequestError('use continue with google')
+  }
   if (!user) {
     throw new BadRequestError("Invalid email or password")
   }
 
-  const isPasswordValid = await bcrypt.compare(parsedData.data.password, user.password);
+  const isPasswordValid = await bcrypt.compare(parsedData.data.password, user.password!);
   if (!isPasswordValid) {
     throw new BadRequestError('Invalid email or password')
   }
