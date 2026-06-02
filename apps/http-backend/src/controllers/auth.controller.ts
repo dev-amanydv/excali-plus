@@ -60,7 +60,7 @@ export const handleGoogleSession = AsyncHandler(async (req: Request, res: Respon
       path: "/"
     })
 
-    res.status(201).json({
+    return res.status(201).json({
       msg: "Account created successfully",
       data: {
         user: newUser,

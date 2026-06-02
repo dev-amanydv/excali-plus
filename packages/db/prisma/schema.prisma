@@ -13,10 +13,16 @@ datasource db {
   provider = "postgresql"
 }
 
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+}
+
 model User {
   id        String   @unique @default(uuid())
   name      String
-  password  String   @default("")
+  password  String?
+  provider  AuthProvider @default(LOCAL)
   email     String   @unique
   avatar    String?
   rooms     Room[]
