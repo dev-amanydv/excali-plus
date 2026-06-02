@@ -9,18 +9,95 @@ import jwt from "jsonwebtoken";
 import { JWT_SECRET } from "@repo/backend-common/config";
 import bcrypt from "bcrypt";
 import AsyncHandler from "../utils/AsyncHandler.js";
+import { OAuth2Client } from "google-auth-library";
+import { AppError } from "../middlewares/errors/AppError.js";
 
 
-const google_client_secret = process.env.GOOGLE_CLIENT_SECRET!;
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+export const handleGoogleSession = AsyncHandler(async (req: Request, res: Response) => {
+  const credential = req.body.credential;
+  const ticket = await client.verifyIdToken({
+    idToken: credential,
+    audience: process.env.GOOGLE_CLIENT_ID
+  })
+
+  const payload = ticket.getPayload();
+  if (!payload) {
+    throw new AppError('Invalid Token', 401)
+  }
+  const userExist = await prismaClient.user.findUnique({
+    where: {
+      email: payload?.email
+    }
+  })
+  if (!userExist) {
+    const newUser = await prismaClient.user.create({
+      data: {
+        name: payload?.name as string,
+        password: "",
+        email: payload?.email as string,
+        avatar: payload?.picture
+      }
+    })
+    const refreshToken = jwt.sign({ email: newUser.email, id: newUser.id }, JWT_SECRET, {
+      expiresIn: "7d",
+      issuer: "ExcaliPlus",
+      audience: "Users",
+    });
+
+    const accessToken = jwt.sign({ email: newUser.email, id: newUser.id }, JWT_SECRET, {
+      expiresIn: "1h",
+      issuer: "ExcaliPlus",
+      audience: "Users",
+    });
+
+    res.cookie("token", accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 1 * 60 * 60 * 10000,
+      path: "/"
+    })
+
+    res.status(201).json({
+      msg: "Account created successfully",
+      data: {
+        user: newUser,
+        refreshToken: refreshToken
+      }
+    })
+  }
+  const refreshToken = jwt.sign({ email: userExist?.email, id: userExist?.id }, JWT_SECRET, {
+    expiresIn: "7d",
+    issuer: "ExcaliPlus",
+    audience: "Users",
+  });
+
+  const accessToken = jwt.sign({ email: userExist?.email, id: userExist?.id }, JWT_SECRET, {
+    expiresIn: "1h",
+    issuer: "ExcaliPlus",
+    audience: "Users",
+  });
+
+  res.cookie("token", accessToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    maxAge: 1 * 60 * 60 * 10000,
+    path: "/"
+  })
+
+  res.status(201).json({
+    msg: "Logged in successfully",
+    data: {
+
+    }
+  })
+}
+)
 
 export const handleSignup = AsyncHandler(async (req: Request, res: Response) => {
-  const type = req.query.type;
-  if (type == 'google') {
-    const credential = req.body.credential;
-    const decoded = jwt.verify(credential, google_client_secret)
-    console.log(decoded)
-  }
-  console.log(type)
   const parsedData = CreateUserSchema.safeParse(req.body);
   if (!parsedData.success) {
     throw new BadRequestError("Invalid body type");
@@ -42,31 +119,53 @@ export const handleSignup = AsyncHandler(async (req: Request, res: Response) => 
     saltRounds,
   );
 
+  const avatarApi = `https://api.dicebear.com/10.x/lorelei/svg?seed=${encodeURIComponent(parsedData.data.email)}`
+
   const newUser = await prismaClient.user.create({
     data: {
       name: parsedData.data.name,
       email: parsedData.data.email,
       password: hashedPassword,
+      avatar: avatarApi
     },
     select: {
       id: true,
       name: true,
       email: true,
+      avatar: true,
       createdAt: true,
     },
   });
 
-  const token = jwt.sign({ email: newUser.email, id: newUser.id }, JWT_SECRET, {
-    expiresIn: "14d",
-    issuer: "SharedCanvas",
+  const refreshToken = jwt.sign({ email: newUser.email, id: newUser.id }, JWT_SECRET, {
+    expiresIn: "7d",
+    issuer: "ExcaliPlus",
     audience: "Users",
   });
 
-  res.cookie("token", token, {
+  await prismaClient.user.update({
+    where: {
+      email: parsedData.data.email
+    },
+    data: {
+      refreshToken: refreshToken
+    }
+  })
+
+  const accessToken = jwt.sign({
+    email: newUser.email,
+    id: newUser.id
+  }, JWT_SECRET, {
+    expiresIn: '1h',
+    issuer: "ExcaliPlus",
+    audience: "Users"
+  })
+
+  res.cookie("token", accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",
-    maxAge: 14 * 24 * 60 * 60 * 1000,
+    maxAge: 1 * 60 * 60 * 1000,
     path: "/",
   });
 
@@ -74,6 +173,7 @@ export const handleSignup = AsyncHandler(async (req: Request, res: Response) => 
     msg: "Account created successfully",
     data: {
       user: newUser,
+      refreshToken: refreshToken
     },
   });
 }
@@ -88,7 +188,7 @@ export const handleLogin = AsyncHandler(async (req: Request, res: Response) => {
   const user = await prismaClient.user.findUnique({
     where: {
       email: parsedData.data.email,
-    }
+    },
   })
 
   if (!user) {
@@ -100,18 +200,24 @@ export const handleLogin = AsyncHandler(async (req: Request, res: Response) => {
     throw new BadRequestError('Invalid email or password')
   }
 
-  const token = jwt.sign({ email: user.email, id: user.id }, JWT_SECRET, {
-    expiresIn: '14d',
-    issuer: "SharedCanvas",
+  const accesstoken = jwt.sign({ email: user.email, id: user.id }, JWT_SECRET, {
+    expiresIn: '1h',
+    issuer: "ExcaliPlus",
     audience: "User"
   });
 
-  res.cookie("token", token, {
+  const refreshToken = jwt.sign({ email: user.email, id: user.id }, JWT_SECRET, {
+    expiresIn: '7d',
+    issuer: "ExcaliPlus",
+    audience: "User"
+  });
+
+  res.cookie("token", accesstoken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: "none",
     path: '/',
-    maxAge: 14 * 24 * 60 * 60 * 1000
+    maxAge: 1 * 60 * 60 * 1000
   });
 
   res.status(200).json({
@@ -121,8 +227,10 @@ export const handleLogin = AsyncHandler(async (req: Request, res: Response) => {
         id: user.id,
         email: user.email,
         avatar: user.avatar,
-        name: user.name
-      }
+        name: user.name,
+        createdAt: user.createdAt
+      },
+      refreshToken: refreshToken
     }
   })
 }

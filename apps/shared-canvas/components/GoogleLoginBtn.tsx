@@ -13,7 +13,6 @@ export default function GoogleLoginBtn () {
         const res = await axios.post(`${HTTP_BACKEND}/auth/signup?type=google`, {
             credential: credentials.credential
         })
-        
     }
     return <GoogleLogin type="standard" size="large" text="continue_with" onSuccess={credentialResponse => {handleSignup(credentialResponse)} } onError={() => console.log('login failed')} />
 }

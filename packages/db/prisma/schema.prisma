@@ -16,12 +16,13 @@ datasource db {
 model User {
   id        String   @unique @default(uuid())
   name      String
-  password  String
+  password  String   @default("")
   email     String   @unique
   avatar    String?
   rooms     Room[]
   elements  Elements[]
   createdAt DateTime @default(now())
+  refreshToken String? @default("")
 }
 
 model Room {
