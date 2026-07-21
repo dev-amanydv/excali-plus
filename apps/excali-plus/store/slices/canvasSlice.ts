@@ -18,6 +18,16 @@ const canvasSlice = createSlice({
     addElement(state, action: PayloadAction<ExcalidrawElement>) {
       state.elements.push(action.payload);
     },
+    upsertElement(state, action: PayloadAction<ExcalidrawElement>) {
+      const index = state.elements.findIndex(
+        (el) => el.id === action.payload.id,
+      );
+      if (index === -1) {
+        state.elements.push(action.payload);
+      } else {
+        state.elements[index] = action.payload;
+      }
+    },
     updateElement(
       state,
       action: PayloadAction<{
@@ -47,19 +57,32 @@ const canvasSlice = createSlice({
     },
     duplicateElements(state, action: PayloadAction<string[]>) {
       const ids = new Set(action.payload);
-      const toDuplicate = state.elements.filter((el) => {
-        ids.has(el.id) && !el.isDeleted;
-      });
+      const toDuplicate = state.elements.filter(
+        (el) => ids.has(el.id) && !el.isDeleted,
+      );
       const OFFSET = 10;
-      const duplicates = toDuplicate.map((el) => ({
-        ...el,
-        id: nanoid(),
-        x: el.x + OFFSET,
-        y: el.x + OFFSET,
-        version: 1,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      }));
+      const idMap = new Map<string, string>();
+      toDuplicate.forEach((el) => idMap.set(el.id, nanoid()));
+
+      const duplicates = toDuplicate.map((el) => {
+        const copy = {
+          ...el,
+          id: idMap.get(el.id)!,
+          x: el.x + OFFSET,
+          y: el.y + OFFSET,
+          seed: Math.floor(Math.random() * 100000),
+          version: 1,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+        if ("boundTextElementId" in copy && copy.boundTextElementId) {
+          copy.boundTextElementId = idMap.get(copy.boundTextElementId) ?? null;
+        }
+        if (copy.type === "text" && copy.containerId) {
+          copy.containerId = idMap.get(copy.containerId) ?? null;
+        }
+        return copy;
+      });
       state.elements.push(...duplicates);
     },
     moveElements(
@@ -189,7 +212,7 @@ function partion<T>(arr: T[], predicate: (item: T) => boolean ): [T[], T[]]{
 }
 
 export const {
-  addElement, updateElement, deleteElement, duplicateElements, updateTextContent, moveElements, resizeElement, rotateElement, sendToBack, bringToFront, bringBackward, bringForward, appendPointToElement, updateArrowBinding, addFile, clearCanvas, loadElements, setTextEditing
+  addElement, upsertElement, updateElement, deleteElement, duplicateElements, updateTextContent, moveElements, resizeElement, rotateElement, sendToBack, bringToFront, bringBackward, bringForward, appendPointToElement, updateArrowBinding, addFile, clearCanvas, loadElements, setTextEditing
 } = canvasSlice.actions;
 
 export default canvasSlice.reducer;

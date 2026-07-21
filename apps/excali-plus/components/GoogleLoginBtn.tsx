@@ -1,21 +1,47 @@
-import { HTTP_BACKEND } from "@/config";
 import { addUser } from "@/store/slices/userSlice";
-import { store } from "@/store/store";
+import { useAppDispatch } from "@/store/store";
+import { api } from "@/utils/api";
 import { GoogleLogin } from "@react-oauth/google";
-import axios from "axios";
 
 interface credentialResponse {
     clientId?: string | undefined,
     credential?: string | undefined
 }
 
-export default function GoogleLoginBtn () {
-    async function handleSignup (credentials: credentialResponse) {
-        console.log(credentials)
-        const res = await axios.post(`${HTTP_BACKEND}/auth/google`, {
-            credential: credentials.credential
-        });
-        addUser({userId: res.data.id, email: res.data.email, name: res.data.name})
+export default function GoogleLoginBtn({ onSuccess }: { onSuccess?: () => void }) {
+    const dispatch = useAppDispatch();
+
+    async function handleSignup(credentials: credentialResponse) {
+        try {
+            const res = await api.post(`/auth/google`, {
+                credential: credentials.credential,
+            });
+            const { user, accessToken } = res.data.data;
+            dispatch(
+                addUser({
+                    userId: user.id,
+                    email: user.email,
+                    name: user.name,
+                    avatar: user.avatar ?? null,
+                    token: accessToken,
+                }),
+            );
+            onSuccess?.();
+        } catch (err) {
+            console.error("Google login failed", err);
+        }
     }
-    return <GoogleLogin type="standard" size="large" text="continue_with" onSuccess={credentialResponse => {handleSignup(credentialResponse)} } onError={() => console.log('login failed')} />
+
+    return (
+        <GoogleLogin
+            type="standard"
+            size="large"
+            text="continue_with"
+            onSuccess={(credentialResponse) => {
+                handleSignup(credentialResponse);
+            }}
+            onError={() => console.log("login failed")}
+            
+        />
+    );
 }

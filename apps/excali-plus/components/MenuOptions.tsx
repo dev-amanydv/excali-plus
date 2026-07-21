@@ -1,10 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useAppDispatch, useAppSelector } from "@/store/store";
-import { setTheme } from "@/store/slices/uiSlice";
+import { useEffect, useState } from "react";
+import { store, useAppDispatch, useAppSelector } from "@/store/store";
+import { setShareDialogOpen, setTheme } from "@/store/slices/uiSlice";
 import { clearCanvas } from "@/store/slices/canvasSlice";
+import { exportToPng } from "@/utils/exportImage";
+import { createSeededRoom } from "@/utils/rooms";
 import { useRouter } from "next/navigation";
+import AuthBox from "./AuthBox";
 
 const Icons = {
   Hamburger: () => (
@@ -193,9 +196,53 @@ function MenuItem({ icon, label, shortcut, purple, bold, chevron, onClick, inDev
 export default function ExcalidrawMenu() {
   const dispatch = useAppDispatch();
   const currentTheme = useAppSelector((s) => s.ui.theme);
+  const userId = useAppSelector((s) => s.user.userId);
   const router = useRouter()
   const [open, setOpen] = useState(false);
   const [selectedBg, setSelectedBg] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [saveFlow, setSaveFlow] = useState<null | "info" | "auth">(null);
+
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 3000);
+    return () => clearTimeout(t);
+  }, [notice]);
+
+  const handleExportImage = () => {
+    exportToPng(store.getState().canvas.elements);
+    setOpen(false);
+  };
+
+  const doSave = async () => {
+    setSaving(true);
+    try {
+      const roomId = await createSeededRoom(store.getState().canvas.elements);
+      const link = `${window.location.origin}/canvas/${roomId}`;
+      await navigator.clipboard.writeText(link).catch(() => {});
+      setNotice("Saved to your account — link copied to clipboard");
+    } catch (err) {
+      console.error("Save to account failed", err);
+      setNotice("Save failed. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveToAccount = () => {
+    setOpen(false);
+    if (!userId) {
+      setSaveFlow("info");
+      return;
+    }
+    doSave();
+  };
+
+  const handleLiveCollaboration = () => {
+    dispatch(setShareDialogOpen(true));
+    setOpen(false);
+  };
 
   const handleClearCanvas = () => {
     if (confirm("This will clear the canvas. Are you sure?")) {
@@ -216,6 +263,63 @@ export default function ExcalidrawMenu() {
 
   return (
     <div className="relative">
+      {notice && (
+        <div className="fixed left-1/2 bottom-6 -translate-x-1/2 z-[60] rounded-lg bg-black/80 text-white text-sm px-4 py-2 shadow-lg">
+          {notice}
+        </div>
+      )}
+
+      {saveFlow === "info" && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/30 flex items-center justify-center p-4"
+          onClick={() => setSaveFlow(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl bg-white p-8 flex flex-col gap-5 items-center text-center shadow-xl"
+          >
+            <div className="w-12 h-12 rounded-full bg-[#F1F0FE] text-[#6866D4] flex items-center justify-center">
+              <Icons.Save />
+            </div>
+            <h1 className="text-xl font-extrabold text-gray-900">
+              Save to the cloud
+            </h1>
+            <p className="text-sm text-gray-600">
+              Saving your scene to the cloud requires an account. Create one (or
+              sign in) and we&apos;ll save your current drawing right away.
+            </p>
+            <div className="flex gap-3 w-full pt-1">
+              <button
+                onClick={() => setSaveFlow(null)}
+                className="flex-1 rounded-xl border border-neutral-300 py-3 text-sm font-semibold text-gray-700 hover:bg-neutral-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setSaveFlow("auth")}
+                className="flex-1 rounded-xl bg-[#6866D4] py-3 text-sm font-semibold text-white hover:bg-[#5B57CA] cursor-pointer"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {saveFlow === "auth" && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/30 flex items-center justify-center p-4"
+          onClick={() => setSaveFlow(null)}
+        >
+          <AuthBox
+            handleClose={() => setSaveFlow(null)}
+            onSuccess={() => {
+              setSaveFlow(null);
+              doSave();
+            }}
+          />
+        </div>
+      )}
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-10 h-10 rounded-xl bg-white dark:bg-gray-800 border border-black/10 dark:border-white/10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -228,13 +332,13 @@ export default function ExcalidrawMenu() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
 
-          <div className="absolute top-12 left-0 w-[300px] bg-white dark:bg-gray-900 border border-black/10 dark:border-white/10 rounded-xl z-50 shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
+          <div className="absolute top-12 left-0 w-[min(300px,calc(100vw-24px))] max-h-[70vh] overflow-y-auto bg-white dark:bg-gray-900 border border-black/10 dark:border-white/10 rounded-xl z-50 shadow-xl animate-in fade-in slide-in-from-top-1 duration-100">
 
             <div className="py-1.5">
               <MenuItem icon={<Icons.Folder />}  label="Open"         inDev={true}      shortcut="Cmd+O" />
-              <MenuItem icon={<Icons.Save />}    label="Save to..." />
-              <MenuItem icon={<Icons.Export />}  label="Export image..."     shortcut="Cmd+Shift+E" />
-              <MenuItem icon={<Icons.Users />}   label="Live collaboration..." />
+              <MenuItem icon={<Icons.Save />}    label={saving ? "Saving..." : "Save to..."} onClick={handleSaveToAccount} />
+              <MenuItem icon={<Icons.Export />}  label="Export image..."     shortcut="Cmd+Shift+E" onClick={handleExportImage} />
+              <MenuItem icon={<Icons.Users />}   label="Live collaboration..." onClick={handleLiveCollaboration} />
             </div>
 
             <Divider />

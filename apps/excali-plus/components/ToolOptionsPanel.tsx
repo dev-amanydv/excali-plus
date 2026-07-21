@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/store";
 import { selectActiveTool, selectToolOptions } from "@/store/selectors";
 import { ToolType } from "@/types/canvas";
@@ -609,6 +610,7 @@ export default function ToolOptionsPanel() {
   const activeTool = useAppSelector(selectActiveTool);
   const toolOptions = useAppSelector(selectToolOptions);
   const dispatch = useAppDispatch();
+  const [collapsed, setCollapsed] = useState(false);
 
   const isShapeTool = SHAPE_TOOLS.includes(activeTool);
   const isTextTool = activeTool === "text";
@@ -658,13 +660,21 @@ export default function ToolOptionsPanel() {
 
   return (
     <div
-      className="absolute top-[100px] left-[12px] z-30 bg-white border border-[#e2e2e2] rounded-lg p-[14px] flex flex-col gap-[14px] select-none"
+      className="fixed sm:absolute inset-x-2 bottom-[calc(env(safe-area-inset-bottom)+64px)] sm:inset-x-auto sm:bottom-auto sm:top-[100px] sm:left-[12px] sm:w-[196px] max-h-[40vh] sm:max-h-[calc(100vh-140px)] overflow-y-auto z-30 bg-white border border-[#e2e2e2] rounded-xl sm:rounded-lg p-[14px] flex flex-col gap-[14px] select-none"
       style={{
-        width: 196,
         boxShadow:
           "0px 0px .93px 0px rgba(0,0,0,.17), 0px 0px 3.13px 0px rgba(0,0,0,.08), 0px 7px 14px 0px rgba(0,0,0,.05)",
       }}
     >
+      <button
+        type="button"
+        onClick={() => setCollapsed(!collapsed)}
+        className="sm:hidden flex justify-between items-center text-xs font-medium text-[#868e96] cursor-pointer"
+      >
+        <span>Options</span>
+        <span>{collapsed ? "▲" : "▼"}</span>
+      </button>
+      <div className={`${collapsed ? "hidden" : "flex"} sm:flex flex-col gap-[14px]`}>
       <div>
         <SectionLabel>Stroke</SectionLabel>
         <div className="flex items-center gap-[6px]">
@@ -993,6 +1003,7 @@ export default function ToolOptionsPanel() {
             <BringToFrontIcon />
           </OptionButton>
         </div>
+      </div>
       </div>
     </div>
   );

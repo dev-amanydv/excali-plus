@@ -5,10 +5,11 @@ import { JWT_SECRET } from "@repo/backend-common/config";
 import WebSocket from "ws";
 import { prismaClient } from "@repo/db/client";
 
-const wss = new WebSocketServer({ port: 9000 });
-console.log(`Websocket is running at port: ${9000}`)
+const PORT = Number(process.env.PORT) || 9000;
+const wss = new WebSocketServer({ port: PORT });
+console.log(`Websocket is running at port: ${PORT}`)
 interface AuthJwtPayload extends JwtPayload {
-  userId?: string;
+  id?: string;
 }
 
 interface Users {
@@ -18,6 +19,29 @@ interface Users {
 }
 
 let users: Users[] = [];
+
+const INT_COLUMNS = new Set(["y", "strokeWidth", "seed", "version", "fontSize"]);
+const ELEMENT_COLUMNS = [
+  "type", "edgeStyle", "boundTextElementId", "points", "startArrowHead",
+  "endArrowHead", "startBinding", "endBinding", "simulatePressure", "pressures",
+  "text", "fontSize", "fontFamily", "textAlign", "verticalAlign", "fontWeight",
+  "lineHeight", "isEditing", "autoResize", "originalText", "containerId",
+  "x", "y", "width", "height", "angle", "strokeColor", "backgroundColor",
+  "fillStyle", "strokeStyle", "strokeWidth", "opacity", "roughness",
+  "isDeleted", "seed", "version", "isLocked",
+];
+
+function pickElementColumns(raw: any): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of ELEMENT_COLUMNS) {
+    if (raw[key] === undefined) continue;
+    out[key] =
+      INT_COLUMNS.has(key) && typeof raw[key] === "number"
+        ? Math.round(raw[key])
+        : raw[key];
+  }
+  return out;
+}
 
 function authenticateUser(token: string) {
   try {
@@ -57,11 +81,21 @@ wss.on("connection", (ws, request) => {
     const parsedData = JSON.parse(data.toString());
     if (parsedData.type === "join-room") {
       const user = users.find((x) => x.ws === ws);
-      if (!user?.rooms.includes(parsedData.roomId)) {
-        user?.rooms.push(parsedData.roomId)
+      if (!user) return;
+      if (!user.rooms.includes(parsedData.roomId)) {
+        user.rooms.push(parsedData.roomId);
       }
-      console.log("AFTER", users);
-      user?.ws.send(
+      users.forEach((user) => {
+        if (user.ws !== ws && user.rooms.includes(parsedData.roomId)) {
+          user.ws.send(
+            JSON.stringify({
+              type: "presence",
+              data: { event: "join", userId: user.userId },
+            }),
+          );
+        }
+      });
+      user.ws.send(
         JSON.stringify({
           msg: `Room: ${parsedData.roomId} joined!`,
         }),
@@ -73,40 +107,50 @@ wss.on("connection", (ws, request) => {
       if (!user) {
         return;
       }
-      user.rooms = user?.rooms.filter((x) => x !== parsedData.roomId);
+      user.rooms = user.rooms.filter((x) => x !== parsedData.roomId);
+      users.forEach((user) => {
+        if (user.ws !== ws && user.rooms.includes(parsedData.roomId)) {
+          user.ws.send(
+            JSON.stringify({
+              type: "presence",
+              data: { event: "leave", userId: user.userId },
+            }),
+          );
+        }
+      });
       user.ws.send(`Room: ${parsedData.roomId} leaved successfully`);
     }
 
-    if (parsedData.type === "onMouseDown") {
-      const roomId = parsedData.data.roomId;
-      try {
-        users.forEach((user) => {
-          if (user.rooms.includes(roomId)) {
-            console.log("act roomId: ", user.rooms)
-            console.log(user)
-            user.ws.send(
-              JSON.stringify({
-                type: "draw",
-                data: parsedData.data
-              }),
-            );
-          }
-        });
-      } catch (error) {
-        console.log("Error in broadcsting event: ", error);
-      }
+    if (parsedData.type === "cursor") {
+      const roomId = parsedData.data?.roomId;
+      const sender = users.find((x) => x.ws === ws);
+      if (roomId === undefined || !sender) return;
+      users.forEach((peer) => {
+        if (peer.ws !== ws && peer.rooms.includes(roomId)) {
+          peer.ws.send(
+            JSON.stringify({
+              type: "cursor",
+              data: {
+                userId: sender.userId,
+                x: parsedData.data.x,
+                y: parsedData.data.y,
+                name: parsedData.data.name,
+              },
+            }),
+          );
+        }
+      });
     }
-    if (parsedData.type === "onMouseMove") {
+
+    if (parsedData.type === "onMouseDown" || parsedData.type === "onMouseMove") {
       const roomId = parsedData.data.roomId;
       try {
         users.forEach((user) => {
-          if (user.rooms.includes(roomId)) {
-            console.log("act roomId: ", user.rooms)
-            console.log(user)
+          if (user.ws !== ws && user.rooms.includes(roomId)) {
             user.ws.send(
               JSON.stringify({
                 type: "draw",
-                data: parsedData.data
+                data: parsedData.data,
               }),
             );
           }
@@ -119,15 +163,21 @@ wss.on("connection", (ws, request) => {
     if (parsedData.type === "onMouseUp") {
       const roomId = parsedData.data.roomId;
       try {
-        const res = await prismaClient.elements.create({
-          data: { ...parsedData.data, createdAt: new Date(), updatedAt: new Date(), userId },
+        const fields = pickElementColumns(parsedData.data);
+        await prismaClient.elements.upsert({
+          where: { id: parsedData.data.id },
+          create: {
+            ...fields,
+            id: parsedData.data.id,
+            roomId,
+            userId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          } as any,
+          update: { ...fields, roomId, updatedAt: new Date() },
         });
-        console.log("RESPONSE: ", res)
-        console.log("sent roomId: ", roomId, " type: ", typeof (roomId))
         users.forEach((user) => {
-          if (user.rooms.includes(roomId)) {
-            console.log("act roomId: ", user.rooms)
-            console.log(user)
+          if (user.ws !== ws && user.rooms.includes(roomId)) {
             user.ws.send(
               JSON.stringify({
                 type: "onMouseUp",
@@ -140,9 +190,49 @@ wss.on("connection", (ws, request) => {
         console.log("Error saving message: ", error);
       }
     }
+
+    if (parsedData.type === "delete-element") {
+      const roomId = parsedData.data.roomId;
+      const ids: string[] = parsedData.data.ids ?? [];
+      if (ids.length === 0) return;
+      try {
+        await prismaClient.elements.updateMany({
+          where: { id: { in: ids } },
+          data: { isDeleted: true, updatedAt: new Date() },
+        });
+        users.forEach((user) => {
+          if (user.ws !== ws && user.rooms.includes(roomId)) {
+            user.ws.send(
+              JSON.stringify({
+                type: "delete-element",
+                data: { roomId, ids }
+              }),
+            );
+          }
+        });
+      } catch (error) {
+        console.log("Error deleting elements: ", error);
+      }
+    }
   });
 
   ws.on("close", () => {
-    console.log("Server closed");
+    const leaving = users.find((x) => x.ws === ws);
+    if (leaving) {
+      leaving.rooms.forEach((roomId) => {
+        users.forEach((peer) => {
+          if (peer.ws !== ws && peer.rooms.includes(roomId)) {
+            peer.ws.send(
+              JSON.stringify({
+                type: "presence",
+                data: { event: "leave", userId: leaving.userId },
+              }),
+            );
+          }
+        });
+      });
+    }
+    users = users.filter((x) => x.ws !== ws);
+    console.log("client disconnected. Connected clients:", users.length);
   });
 });

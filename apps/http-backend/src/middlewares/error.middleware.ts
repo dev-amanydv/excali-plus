@@ -24,20 +24,15 @@ export const errorHandler = (
     const response: any = {
         status: 'error',
         statusCode,
-        message: error.message
+        message: isOperational ? error.message : 'Something went wrong. Please try again later.'
     }
 
-    if (error.details){
+    if (isOperational && error.details){
         response.details = error.details
     }
 
     if (process.env.NODE_ENV === 'development'){
         response.stack = error.stack;
-    }
-
-    if (process.env.NODE_ENV === 'production'){
-        response.message = 'Something went wrong';
-        delete response.details;
     }
 
     res.status(statusCode).json(response);

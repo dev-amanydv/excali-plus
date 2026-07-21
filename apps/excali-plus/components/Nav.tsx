@@ -2,21 +2,20 @@ import { useAppDispatch, useAppSelector } from "@/store/store";
 import { setActiveTool, toogleToolLock } from "@/store/slices/toolSlice";
 import { selectActiveTool } from "@/store/selectors";
 import { ToolType } from "@/types/canvas";
-
 export default function Nav() {
   const dispatch = useAppDispatch();
   const activeTool = useAppSelector(selectActiveTool);
 
   const toolClass = (tool: ToolType) =>
-    `rounded-lg h-[36px] w-[36px] flex justify-center items-center cursor-pointer ${
+    `rounded-lg h-[36px] w-[36px] max-sm:h-11 max-sm:w-11 shrink-0 flex justify-center items-center cursor-pointer ${
       activeTool === tool ? "bg-[#E0DFFE]" : "hover:bg-[#F1F0FE]"
     }`;
 
   return (
-    <div className="h-[44px] bg-white gap-[2px] grid grid-rows-[auto] grid-flow-col auto-cols-min w-[506px] border rounded-[.5rem] shadow-[0px_0px_.93px_0px_rgba(0,0,0,.17),0px_0px_3.13px_0px_rgba(0,0,0,.08),0px_7px_14px_0px_rgba(0,0,0,.05)] z-20 border-[#ECECEC] p-[4px] absolute top-10 mx-auto">
+    <div className="fixed left-1/2 -translate-x-1/2 bottom-[calc(env(safe-area-inset-bottom)+8px)] sm:bottom-auto sm:top-4 flex items-center gap-[2px] max-w-[calc(100vw-16px)] overflow-x-auto bg-white border rounded-[.5rem] shadow-[0px_0px_.93px_0px_rgba(0,0,0,.17),0px_0px_3.13px_0px_rgba(0,0,0,.08),0px_7px_14px_0px_rgba(0,0,0,.05)] z-20 border-[#ECECEC] p-[4px]">
       <div>
         <label
-          className=" hover:bg-[#F1F0FE] rounded-lg h-[36px] w-[36px] flex justify-center items-center cursor-pointer"
+          className="hover:bg-[#F1F0FE] rounded-lg h-[36px] w-[36px] max-sm:h-11 max-sm:w-11 shrink-0 flex justify-center items-center cursor-pointer"
           onClick={() => dispatch(toogleToolLock())}
           title="Keep selected tool active after drawing — Q"
         >
@@ -333,7 +332,7 @@ export default function Nav() {
       </div>
       <div>
         <label
-          className="hover:bg-[#F1F0FE] rounded-lg h-[36px] w-[36px] flex justify-center items-center cursor-pointer"
+          className="hover:bg-[#F1F0FE] rounded-lg h-[36px] w-[36px] shrink-0 max-sm:hidden flex justify-center items-center cursor-pointer"
           title="Image"
         >
           <div className="ToolIcon__icon text-black">
@@ -390,7 +389,7 @@ export default function Nav() {
       </div>
       <div>
         <label
-          className="hover:bg-[#F1F0FE] rounded-lg h-[36px] w-[36px] flex justify-center items-center cursor-pointer"
+          className="hover:bg-[#F1F0FE] rounded-lg h-[36px] w-[36px] shrink-0 max-sm:hidden flex justify-center items-center cursor-pointer"
           title="Library"
         >
           <svg

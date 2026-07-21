@@ -33,7 +33,6 @@ export default function AuthPage({
           </div>
           <div>
             <Button
-              appName="Shared Canvas"
               className="cursor-pointer"
               fullWidth
               variant="primary"

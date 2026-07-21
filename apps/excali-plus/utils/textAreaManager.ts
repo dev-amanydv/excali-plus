@@ -1,10 +1,5 @@
 import { TextElement } from "@/types/canvas";
-
-const FONT_FAMILY_MAP: Record<string, string> = {
-    "hand-drawn": "Caveat, cursive",
-    "normal": "Inter, sans-serif",
-    "monospace": "'Courier New', monospace"
-};
+import { BOUND_TEXT_PADDING, FONT_FAMILY_MAP } from "@/utils/textMeasure";
 
 interface ContainerBounds {
     x: number;
@@ -36,17 +31,16 @@ export function mountTextArea({
     textarea.id = `text-editor-${element.id}`;
 
     if (container) {
-        const containerScreenX = container.x * zoom + scrollX;
-        const containerScreenY = container.y * zoom + scrollY;
-        const containerScreenW = container.width * zoom;
-        const containerScreenH = container.height * zoom;
+        const editorScreenX = (container.x + BOUND_TEXT_PADDING) * zoom + scrollX;
+        const editorScreenW = (container.width - BOUND_TEXT_PADDING * 2) * zoom;
+        const containerCenterY = (container.y + container.height / 2) * zoom + scrollY;
         const lineH = element.fontSize * element.lineHeight * zoom;
 
         Object.assign(textarea.style, {
             position: "fixed",
-            left: `${containerScreenX}px`,
-            top: `${containerScreenY + containerScreenH / 2 - lineH / 2}px`,
-            width: `${containerScreenW}px`,
+            left: `${editorScreenX}px`,
+            top: `${containerCenterY - lineH / 2}px`,
+            width: `${editorScreenW}px`,
             minHeight: `${lineH}px`,
             fontSize: `${element.fontSize * zoom}px`,
             fontFamily: FONT_FAMILY_MAP[element.fontFamily] ?? "sans-serif",
@@ -60,7 +54,7 @@ export function mountTextArea({
             overflow: "hidden",
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
-            padding: "4px",
+            padding: "0",
             margin: "0",
             zIndex: "100",
             boxSizing: "border-box",
@@ -109,11 +103,10 @@ export function mountTextArea({
             const scrollH = textarea.scrollHeight;
             textarea.style.height = `${scrollH}px`;
 
-            const containerScreenY = container.y * zoom + scrollY;
-            const containerScreenH = container.height * zoom;
-            textarea.style.top = `${containerScreenY + containerScreenH / 2 - scrollH / 2}px`;
+            const containerCenterY = (container.y + container.height / 2) * zoom + scrollY;
+            textarea.style.top = `${containerCenterY - scrollH / 2}px`;
 
-            const canvasWidth = container.width;
+            const canvasWidth = container.width - BOUND_TEXT_PADDING * 2;
             const canvasHeight = scrollH / zoom;
             onInput(textarea.value, canvasWidth, canvasHeight);
         } else {
@@ -144,7 +137,7 @@ export function mountTextArea({
 
         if (container) {
             textarea.style.height = "auto";
-            const canvasWidth = container.width;
+            const canvasWidth = container.width - BOUND_TEXT_PADDING * 2;
             const canvasHeight = textarea.scrollHeight / zoom;
             onCommit(textarea.value, canvasWidth, canvasHeight);
         } else {
@@ -169,6 +162,7 @@ export function mountTextArea({
     textarea.addEventListener("blur", commit);
     
     document.body.appendChild(textarea);
+    textarea.focus();
 
     requestAnimationFrame(() => {
         textarea.focus();

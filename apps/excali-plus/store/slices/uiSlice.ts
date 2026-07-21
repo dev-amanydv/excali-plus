@@ -16,6 +16,7 @@ interface UIState {
     isColorPickerOpen: boolean,
     sidebarWidth: number,
     isMobileMenuOpen: boolean,
+    isShareDialogOpen: boolean,
 }
 
 const initialState: UIState = {
@@ -32,6 +33,7 @@ const initialState: UIState = {
     isColorPickerOpen: false,
     sidebarWidth: 260,
     isMobileMenuOpen: false,
+    isShareDialogOpen: false,
 }
 
 const MIN_ZOOM = 0.1;
@@ -44,10 +46,10 @@ const uiSlice = createSlice({
         setZoom(state, action: PayloadAction<number>){
             state.zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, action.payload))
         },
-        zoomAtPoint(state, action: PayloadAction<{delta: number, x: number, y: number}>){
-            const { delta, x, y } = action.payload;
+        zoomAtPoint(state, action: PayloadAction<{factor: number, x: number, y: number}>){
+            const { factor, x, y } = action.payload;
             const prevZoom = state.zoom;
-            const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, delta + prevZoom));
+            const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prevZoom * factor));
 
             state.scrollX = x - (x - state.scrollX) * (newZoom / prevZoom);
             state.scrollY = y - (y - state.scrollY) * (newZoom / prevZoom);
@@ -62,9 +64,7 @@ const uiSlice = createSlice({
         },
         panBy(state, action: PayloadAction<{dx: number, dy: number}>){
             state.scrollX += action.payload.dx;
-            state.scrollY += action.payload.dy
-            //state.scrollX = state.scrollX + action.payload.dx
-            //state.scrollY = state.scrollY + action.payload.dy
+            state.scrollY += action.payload.dy;
         },
         resetView(state){
             state.zoom = 1;
@@ -86,11 +86,14 @@ const uiSlice = createSlice({
         setShortcutDialogOpen(state, action: PayloadAction<boolean>) {
             state.isShortcutDialogOpen = action.payload;
         },
+        setShareDialogOpen(state, action: PayloadAction<boolean>) {
+            state.isShareDialogOpen = action.payload;
+        },
     }
 });
 
 export const {
-    setZoom, zoomAtPoint, resetZoom, setScroll, panBy, resetView, toggleGrid, toogleSnapToGrid, setTheme, setExportDialogOpen, setShortcutDialogOpen
+    setZoom, zoomAtPoint, resetZoom, setScroll, panBy, resetView, toggleGrid, toogleSnapToGrid, setTheme, setExportDialogOpen, setShortcutDialogOpen, setShareDialogOpen
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

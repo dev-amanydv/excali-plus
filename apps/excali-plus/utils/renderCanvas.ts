@@ -1,13 +1,14 @@
 import { BoundingBox, ExcalidrawElement } from "@/types/canvas";
+import { Viewport } from "@/utils/viewport";
+import {
+  BOUND_TEXT_PADDING,
+  getFontString,
+  wrapText,
+} from "@/utils/textMeasure";
+import { getHandlePositions } from "@/utils/resize";
 import rough from "roughjs";
 import type { Options } from "roughjs/bin/core";
 import { getStroke } from "perfect-freehand";
-
-const FONT_FAMILY_MAP: Record<string, string> = {
-  "hand-drawn": "Caveat, cursive",
-  "normal":     "Inter, sans-serif",
-  "monospace":  "'Courier New', monospace",
-};
 
 export const ROTATION_HANDLE_OFFSET = 25;
 
@@ -15,22 +16,52 @@ export function renderCanvas(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   elements: ExcalidrawElement[],
+  viewport: Viewport,
+  pendingEraseIds?: Set<string>,
+  background?: string,
 ) {
+  const dpr = window.devicePixelRatio || 1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (background) {
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  ctx.setTransform(
+    dpr * viewport.zoom,
+    0,
+    0,
+    dpr * viewport.zoom,
+    dpr * viewport.scrollX,
+    dpr * viewport.scrollY,
+  );
   const rc = rough.canvas(canvas);
+  const elementsById = new Map(elements.map((el) => [el.id, el]));
 
   elements.forEach((el) => {
-    
     if (el.isDeleted) return;
     ctx.save();
-    ctx.globalAlpha = el.opacity / 100;
+    ctx.globalAlpha = pendingEraseIds?.has(el.id)
+      ? 0.3
+      : el.opacity / 100;
 
-    if (el.angle !== 0) {
-      const cx = el.x + el.width / 2;
-      const cy = el.y + el.height / 2;
-      ctx.translate(cx, cy);
-      ctx.rotate(el.angle);
-      ctx.translate(-cx, -cy);
+    let rotationCx = el.x + el.width / 2;
+    let rotationCy = el.y + el.height / 2;
+    let angle = el.angle;
+
+    if (el.type === "text" && el.containerId) {
+      const container = elementsById.get(el.containerId);
+      if (container) {
+        rotationCx = container.x + container.width / 2;
+        rotationCy = container.y + container.height / 2;
+        angle = container.angle;
+      }
+    }
+
+    if (angle !== 0) {
+      ctx.translate(rotationCx, rotationCy);
+      ctx.rotate(angle);
+      ctx.translate(-rotationCx, -rotationCy);
     }
 
     const roughOptions: Options = {
@@ -78,7 +109,7 @@ export function renderCanvas(
         break;
 
       case "text":
-        drawText(ctx, el);
+        drawText(ctx, el, elementsById);
         break;
     }
     ctx.restore();
@@ -238,127 +269,152 @@ function getSvgPathFromStroke(stroke: number[][]) {
 function drawText(
   ctx: CanvasRenderingContext2D,
   el: Extract<ExcalidrawElement, { type: "text" }>,
+  elementsById: Map<string, ExcalidrawElement>,
 ) {
   if (el.isDeleted) return;
   if (el.isEditing) return;
   if (!el.text.trim()) return;
 
-  ctx.font = `${el.fontSize}px ${FONT_FAMILY_MAP[el.fontFamily]}`;
+  const font = getFontString(el);
+  ctx.font = font;
   ctx.fillStyle = el.strokeColor;
-  ctx.textAlign = el.textAlign;
   ctx.textBaseline = "top";
 
+  const lineHeight = el.fontSize * el.lineHeight;
+  const container = el.containerId
+    ? elementsById.get(el.containerId)
+    : undefined;
+
+  if (container) {
+    const maxWidth = container.width - BOUND_TEXT_PADDING * 2;
+    const lines = wrapText(el.text, font, maxWidth);
+    const textHeight = lines.length * lineHeight;
+    const centerX = container.x + container.width / 2;
+    const startY = container.y + container.height / 2 - textHeight / 2;
+
+    ctx.textAlign = "center";
+    lines.forEach((line, i) => {
+      ctx.fillText(line, centerX, startY + i * lineHeight);
+    });
+    return;
+  }
+
+  ctx.textAlign = el.textAlign;
   let textX = el.x;
   if (el.textAlign === "center") textX = el.x + el.width / 2;
   if (el.textAlign === "right") textX = el.x + el.width;
 
-  const lineHeight = el.fontSize * el.lineHeight;
-  let lines: string[] = [];
-
-  if (el.containerId) {
-    const maxWidth = el.width - 10; 
-    const rawLines = el.text.split("\n");
-    
-    rawLines.forEach((rawLine) => {
-      const words = rawLine.split(" ");
-      let currentLine = words[0] || "";
-      
-      for (let j = 1; j < words.length; j++) {
-        const word = words[j];
-        const measureWidth = ctx.measureText(currentLine + " " + word).width;
-        
-        if (measureWidth < maxWidth) {
-          currentLine += " " + word;
-        } else {
-          lines.push(currentLine);
-          currentLine = word;
-        }
-      }
-      lines.push(currentLine);
-    });
-  } else {
-    lines = el.text.split("\n");
-  }
-
-  lines.forEach((line, i) => {
+  el.text.split("\n").forEach((line, i) => {
     ctx.fillText(line, textX, el.y + i * lineHeight);
   });
 }
 
-export function renderSelectionHighlight (
+export interface OverlayState {
+  boundingBox: BoundingBox | null;
+  selectedIds: string[];
+  selectedAngle: number;
+  marquee?: { x: number; y: number; width: number; height: number } | null;
+}
+
+export function renderOverlay(
   ctx: CanvasRenderingContext2D,
-  boundingBox: BoundingBox | null,
-  selectedIds: string[],
-  angle: number = 0
+  canvas: HTMLCanvasElement,
+  viewport: Viewport,
+  overlay: OverlayState,
 ) {
-  if (!boundingBox || selectedIds.length === 0) return;
+  const dpr = window.devicePixelRatio || 1;
+  const zoom = viewport.zoom;
+  ctx.setTransform(
+    dpr * zoom,
+    0,
+    0,
+    dpr * zoom,
+    dpr * viewport.scrollX,
+    dpr * viewport.scrollY,
+  );
 
-  const cx = boundingBox.x + boundingBox.width / 2;
-  const cy = boundingBox.y + boundingBox.height / 2;
+  const { boundingBox, selectedIds, selectedAngle, marquee } = overlay;
 
-  ctx.save();
+  if (boundingBox && selectedIds.length > 0) {
+    const pad = 5 / zoom;
+    const cx = boundingBox.x + boundingBox.width / 2;
+    const cy = boundingBox.y + boundingBox.height / 2;
+    const isMultiSelect = selectedIds.length > 1;
 
-  if (angle !== 0) {
-    ctx.translate(cx, cy);
-    ctx.rotate(angle);
-    ctx.translate(-cx, -cy);
+    ctx.save();
+
+    if (selectedAngle !== 0) {
+      ctx.translate(cx, cy);
+      ctx.rotate(selectedAngle);
+      ctx.translate(-cx, -cy);
+    }
+
+    ctx.strokeStyle = "#6865D4";
+    ctx.lineWidth = 2 / zoom;
+    if (isMultiSelect) ctx.setLineDash([5 / zoom, 5 / zoom]);
+    ctx.strokeRect(
+      boundingBox.x - pad,
+      boundingBox.y - pad,
+      boundingBox.width + pad * 2,
+      boundingBox.height + pad * 2,
+    );
+    ctx.setLineDash([]);
+
+    if (!isMultiSelect) {
+      const handleSize = 8 / zoom;
+
+      ctx.fillStyle = "#fff";
+      ctx.strokeStyle = "#6865D4";
+      ctx.lineWidth = 1 / zoom;
+
+      getHandlePositions(boundingBox, zoom).forEach((handle) => {
+        ctx.fillRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
+        ctx.strokeRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
+      });
+
+      const rotHandleX = cx;
+      const rotHandleY = boundingBox.y - pad - ROTATION_HANDLE_OFFSET / zoom;
+
+      ctx.beginPath();
+      ctx.strokeStyle = "#6865D4";
+      ctx.lineWidth = 1.5 / zoom;
+      ctx.moveTo(rotHandleX, boundingBox.y - pad);
+      ctx.lineTo(rotHandleX, rotHandleY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(rotHandleX, rotHandleY, 5 / zoom, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      ctx.strokeStyle = "#6865D4";
+      ctx.lineWidth = 1.5 / zoom;
+      ctx.stroke();
+    }
+
+    ctx.restore();
   }
 
-  ctx.strokeStyle = '#6865D4';
-  ctx.lineWidth = 2;
-
-  ctx.strokeRect(boundingBox.x - 5, boundingBox.y - 5, boundingBox.width + 10, boundingBox.height + 10)
-
-  const handleSize = 8;
-  const handles = [
-    { x: boundingBox.x - 5, y: boundingBox.y - 5 },
-    { x: boundingBox.x + boundingBox.width + 5, y: boundingBox.y - 5 },
-    { x: boundingBox.x + boundingBox.width + 5, y: boundingBox.y + boundingBox.height + 5 },
-    { x: boundingBox.x - 5, y: boundingBox.y + boundingBox.height + 5 },
-    { x: cx, y: boundingBox.y - 5 },
-    { x: cx, y: boundingBox.y + boundingBox.height + 5 },
-    { x: boundingBox.x - 5, y: cy },
-    { x: boundingBox.x + boundingBox.width + 5, y: cy },
-  ];
-
-  ctx.fillStyle = '#fff';
-  ctx.strokeStyle = "#6865D4";
-  ctx.lineWidth = 1;
-
-  handles.forEach((handle) => {
-    ctx.fillRect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
-    ctx.strokeRect(handle.x - handleSize / 2, handle.y - handleSize / 2, handleSize, handleSize);
-  });
-
-  const rotHandleY = boundingBox.y - 5 - ROTATION_HANDLE_OFFSET;
-  const rotHandleX = cx;
-
-  ctx.beginPath();
-  ctx.strokeStyle = "#6865D4";
-  ctx.lineWidth = 1.5;
-  ctx.moveTo(rotHandleX, boundingBox.y - 5);
-  ctx.lineTo(rotHandleX, rotHandleY);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(rotHandleX, rotHandleY, 5, 0, Math.PI * 2);
-  ctx.fillStyle = "#fff";
-  ctx.fill();
-  ctx.strokeStyle = "#6865D4";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-
-  ctx.restore();
+  if (marquee) {
+    ctx.save();
+    ctx.fillStyle = "rgba(104, 101, 212, 0.08)";
+    ctx.strokeStyle = "#6865D4";
+    ctx.lineWidth = 1 / zoom;
+    ctx.setLineDash([5 / zoom, 5 / zoom]);
+    ctx.fillRect(marquee.x, marquee.y, marquee.width, marquee.height);
+    ctx.strokeRect(marquee.x, marquee.y, marquee.width, marquee.height);
+    ctx.restore();
+  }
 }
 
 export function getRotationHandlePosition(
   boundingBox: BoundingBox,
-  angle: number = 0
+  angle: number = 0,
+  zoom: number = 1,
 ): { x: number; y: number } {
   const cx = boundingBox.x + boundingBox.width / 2;
   const cy = boundingBox.y + boundingBox.height / 2;
   const hx = cx;
-  const hy = boundingBox.y - 5 - ROTATION_HANDLE_OFFSET;
+  const hy = boundingBox.y - (5 + ROTATION_HANDLE_OFFSET) / zoom;
 
   if (angle === 0) return { x: hx, y: hy };
 

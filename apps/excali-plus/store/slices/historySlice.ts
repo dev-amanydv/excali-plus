@@ -37,13 +37,23 @@ const historySlice = createSlice({
                 state.undoStack.shift()
             }
         },
-        undo(state){
-            const last = state.undoStack.pop();
-            if (last) state.redoStack.push(last)
+        undo(state, action: PayloadAction<ExcalidrawElement[]>){
+            if (state.undoStack.length === 0) return;
+            state.undoStack.pop();
+            state.redoStack.push({
+                elements: action.payload,
+                timestamp: Date.now(),
+                actionType: "undo"
+            });
         },
-        redo(state){
-            const next = state.redoStack.pop();
-            if (next) state.undoStack.push(next);
+        redo(state, action: PayloadAction<ExcalidrawElement[]>){
+            if (state.redoStack.length === 0) return;
+            state.redoStack.pop();
+            state.undoStack.push({
+                elements: action.payload,
+                timestamp: Date.now(),
+                actionType: "redo"
+            });
         },
         clearHistory(state){
             state.undoStack = [],

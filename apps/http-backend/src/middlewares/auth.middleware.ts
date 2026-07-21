@@ -1,9 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
+import { JWT_SECRET } from "@repo/backend-common/config";
 import { BadRequestError, UnauthorizedError } from "./errors/errorTypes.js";
 
 interface AuthJwtPayload extends JwtPayload {
-  userId: string;
+  id: string;
 }
 
 export const authMiddleware = (
@@ -11,19 +12,19 @@ export const authMiddleware = (
   res: Response,
   next: NextFunction,
 ) => {
-  if (!req.cookies) {
-    throw new Error(
-      "cookie-parser middleware not configured. Add app.use(cookieParser()) before routes.",
-    );
-  }
-  const token = req.cookies.token;
-  console.log("token: ", token)
+  const authHeader = req.headers.authorization;
+  const bearerToken =
+    authHeader && authHeader.startsWith("Bearer ")
+      ? authHeader.slice("Bearer ".length).trim()
+      : undefined;
+  const token = bearerToken ?? req.cookies?.token;
+
   if (!token) {
     throw new BadRequestError("Authentication required. Please login.");
   }
 
   try {
-    const decoded = jwt.verify(token, "secret") as AuthJwtPayload;
+    const decoded = jwt.verify(token, JWT_SECRET) as AuthJwtPayload;
     req.userId = decoded.id;
     next();
   } catch (error: any) {

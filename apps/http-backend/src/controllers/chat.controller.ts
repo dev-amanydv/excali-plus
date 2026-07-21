@@ -2,23 +2,22 @@ import { prismaClient } from "@repo/db/client";
 import AsyncHandler from "../utils/AsyncHandler.js";
 
 export const getRoomChats = AsyncHandler(async (req, res) => {
-    console.log(req.params)
     const roomId = Number(req.params.roomId);
-    console.log({roomId})
 
-    const chats = await prismaClient.chat.findMany({
+    const chats = await prismaClient.elements.findMany({
         where: {
-            roomId: roomId
+            roomId: roomId,
+            isDeleted: false,
         },
         orderBy: {
-            id: "asc"
-        }
+            createdAt: "asc",
+        },
     });
 
     res.status(200).json({
         status: "success",
         data: {
-            chats
-        }
-    })
-})
+            chats,
+        },
+    });
+});

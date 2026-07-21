@@ -83,6 +83,7 @@ export const handleGoogleSession = AsyncHandler(async (req: Request, res: Respon
       msg: "Account created successfully",
       data: {
         user: newUser,
+        accessToken: accessToken,
         refreshToken: refreshToken
       }
     })
@@ -119,11 +120,26 @@ export const handleGoogleSession = AsyncHandler(async (req: Request, res: Respon
     msg: "Logged in successfully",
     data: {
       user: userExist,
+      accessToken: accessToken,
       refreshToken: refreshToken
     }
   })
 }
 )
+
+export const handleMe = AsyncHandler(async (req: Request, res: Response) => {
+  const userId = req.userId as string;
+  const user = await prismaClient.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, email: true, avatar: true },
+  });
+  if (!user) {
+    throw new BadRequestError("User not found");
+  }
+  res.status(200).json({
+    data: { user },
+  });
+});
 
 export const handleSignup = AsyncHandler(async (req: Request, res: Response) => {
   const parsedData = CreateUserSchema.safeParse(req.body);
@@ -203,6 +219,7 @@ export const handleSignup = AsyncHandler(async (req: Request, res: Response) => 
     msg: "Account created successfully",
     data: {
       user: newUser,
+      accessToken: accessToken,
       refreshToken: refreshToken
     },
   });
@@ -262,6 +279,7 @@ export const handleLogin = AsyncHandler(async (req: Request, res: Response) => {
         name: user.name,
         createdAt: user.createdAt
       },
+      accessToken: accesstoken,
       refreshToken: refreshToken
     }
   })

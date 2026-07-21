@@ -1,8 +1,8 @@
 import "dotenv/config";
 import http from "http";
 import app from "./app.js";
-const PORT = 8000;
-const NODE_ENV = "dev";
+const PORT = Number(process.env.PORT) || 8000;
+const NODE_ENV = process.env.NODE_ENV ?? "dev";
 
 if (!PORT) {
   console.error("PORT is not defined or Invalid");

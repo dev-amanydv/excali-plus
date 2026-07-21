@@ -1,4 +1,6 @@
-export const HTTP_BACKEND = "http://localhost:8000"
-export const WS_URL = "ws://localhost:9000"
-export const JWT_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImRoZWVyYWpAZ21haWwuY29tIiwiaWQiOiJhN2U0MTNmNy00MjVhLTQ3ZjgtYmU3ZC04NGM4ODk1N2VlMzIiLCJpYXQiOjE3ODAyNDQ5NzEsImV4cCI6MTc4MTQ1NDU3MSwiYXVkIjoiVXNlcnMiLCJpc3MiOiJTaGFyZWRDYW52YXMifQ.omb0tvhTQOBEVB8mU_D6a_qEPaoeIcM6ltzjk0pS0I4"
-export const GOOGLE_CLIENT_ID = "536315890077-jm9q8d1nr7743ad1n3aoulpetta90b5c.apps.googleusercontent.com"
+const isProd = process.env.NEXT_PUBLIC_NODE_ENV === 'production'
+
+export const HTTP_BACKEND =
+  isProd ? process.env.NEXT_PUBLIC_HTTP_BACKEND : "http://localhost:8000";
+export const WS_URL = isProd ? process.env.NEXT_PUBLIC_WS_URL : "ws://localhost:9000";
+export const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";

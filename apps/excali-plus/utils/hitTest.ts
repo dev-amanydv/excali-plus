@@ -1,4 +1,30 @@
-import { ExcalidrawElement } from "@/types/canvas";
+import { BoundingBox, ExcalidrawElement } from "@/types/canvas";
+
+export function calculateCombinedBoundingBox(
+    elements: ExcalidrawElement[],
+): BoundingBox | null {
+    if (elements.length === 0) return null;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    elements.forEach((el) => {
+        minX = Math.min(minX, el.x, el.x + el.width);
+        minY = Math.min(minY, el.y, el.y + el.height);
+        maxX = Math.max(maxX, el.x, el.x + el.width);
+        maxY = Math.max(maxY, el.y, el.y + el.height);
+    });
+
+    return {
+        x: minX,
+        y: minY,
+        width: maxX - minX,
+        height: maxY - minY,
+        angle: 0,
+    };
+}
 
 export function findElementAtPoint(elements: ExcalidrawElement[], x: number, y: number) {
     for (let i = elements.length - 1; i >= 0; i--){
