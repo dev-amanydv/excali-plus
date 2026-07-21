@@ -25,6 +25,7 @@ RUN pnpm --filter @repo/db exec prisma generate \
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apk add --no-cache curl
 
 COPY --from=build --chown=node:node /app /app
 
