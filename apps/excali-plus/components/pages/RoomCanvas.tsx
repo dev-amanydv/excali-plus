@@ -50,24 +50,66 @@ export function RoomCanvas({
             return
         }
         setIsAuthed(true)
-        const ws = new WebSocket(`${WS_URL}?token=${token}`)
-        socketRef.current = ws
-        ws.onopen = () => {
-            setSocket(ws)
-            setStatus("ready")
-            ws.send(
-                JSON.stringify({
-                    type: "join-room",
-                    roomId: Number(roomId),
-                }),
-            )
+
+        let cancelled = false
+        let retryCount = 0
+        const maxRetries = 10
+        let retryTimer: ReturnType<typeof setTimeout> | null = null
+
+        function connect() {
+            const ws = new WebSocket(WS_URL)
+            socketRef.current = ws
+
+            ws.onopen = () => {
+                retryCount = 0
+                ws.send(JSON.stringify({ type: "auth", token }))
+                ws.send(
+                    JSON.stringify({
+                        type: "join-room",
+                        roomId: Number(roomId),
+                    }),
+                )
+            }
+
+            ws.onmessage = (event) => {
+                if (cancelled) return
+                try {
+                    const msg = JSON.parse(event.data)
+                    if (msg.msg?.startsWith("Room:")) {
+                        setSocket(ws)
+                        setStatus("ready")
+                    }
+                } catch {}
+            }
+
+            ws.onerror = () => {
+                if (!cancelled) setStatus("error")
+            }
+
+            ws.onclose = (e) => {
+                if (cancelled) return
+                setSocket(null)
+                if (e.code === 4001) {
+                    setIsAuthed(false)
+                    return
+                }
+                if (retryCount < maxRetries) {
+                    retryCount++
+                    const delay = Math.min(1000 * 2 ** retryCount, 30000)
+                    retryTimer = setTimeout(connect, delay)
+                } else {
+                    setStatus("error")
+                }
+            }
         }
-        ws.onerror = () => setStatus("error")
+
+        connect()
+
         return () => {
-            if (
-                ws.readyState === WebSocket.OPEN ||
-                ws.readyState === WebSocket.CONNECTING
-            ) {
+            cancelled = true
+            if (retryTimer) clearTimeout(retryTimer)
+            const ws = socketRef.current
+            if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
                 ws.close()
             }
         }

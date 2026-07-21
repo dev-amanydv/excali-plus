@@ -58,27 +58,26 @@ function authenticateUser(token: string) {
 
 wss.on("connection", (ws, request) => {
   console.log("new client connected");
-  const url = request.url;
-  if (!url) return;
 
-  const queryParams = new URLSearchParams(url?.split("?")[1]);
-  const token = queryParams.get("token") ?? "";
-  const userId = authenticateUser(token) as string;
-  if (!userId) {
-    ws.close();
-    return;
-  }
-
-  users.push({
-    userId: userId,
-    rooms: [],
-    ws,
-  });
-
-  console.log("Connected Clients: ", users)
+  let userId: string | null = null;
 
   ws.on("message", async function message(data) {
     const parsedData = JSON.parse(data.toString());
+
+    if (parsedData.type === "auth") {
+      const uid = authenticateUser(parsedData.token) as string;
+      if (!uid) {
+        ws.close(4001, "Token expired or invalid");
+        return;
+      }
+      userId = uid;
+      users.push({ userId: uid, rooms: [], ws });
+      console.log("Connected Clients: ", users)
+      return;
+    }
+
+    if (!userId) return;
+
     if (parsedData.type === "join-room") {
       const user = users.find((x) => x.ws === ws);
       if (!user) return;
