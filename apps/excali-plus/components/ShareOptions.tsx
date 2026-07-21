@@ -102,8 +102,9 @@ const DialogBox = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   };
 
   const onAuthed = () => {
-    if (pendingAction === "export") exportToLink();
-    else startSession();
+    setPendingAction(null);
+    setBusy(false);
+    setStep("options");
   };
 
   const renderBox = () => {

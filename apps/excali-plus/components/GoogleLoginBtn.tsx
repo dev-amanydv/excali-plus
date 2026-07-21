@@ -8,10 +8,11 @@ interface credentialResponse {
     credential?: string | undefined
 }
 
-export default function GoogleLoginBtn({ onSuccess }: { onSuccess?: () => void }) {
+export default function GoogleLoginBtn({ onSuccess, onLoadingChange }: { onSuccess?: () => void; onLoadingChange?: (loading: boolean) => void }) {
     const dispatch = useAppDispatch();
 
     async function handleSignup(credentials: credentialResponse) {
+        onLoadingChange?.(true);
         try {
             const res = await api.post(`/auth/google`, {
                 credential: credentials.credential,
@@ -29,6 +30,8 @@ export default function GoogleLoginBtn({ onSuccess }: { onSuccess?: () => void }
             onSuccess?.();
         } catch (err) {
             console.error("Google login failed", err);
+        } finally {
+            onLoadingChange?.(false);
         }
     }
 

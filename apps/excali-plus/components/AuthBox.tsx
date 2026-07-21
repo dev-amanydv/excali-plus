@@ -4,12 +4,41 @@ import { api } from "@/utils/api";
 import { addUser } from "@/store/slices/userSlice";
 import { useAppDispatch } from "@/store/store";
 
+function Spinner() {
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-white/80 rounded-2xl">
+      <svg
+        className="animate-spin h-8 w-8 text-neutral-800"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <circle
+          className="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          strokeWidth="4"
+        />
+        <path
+          className="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+        />
+      </svg>
+    </div>
+  );
+}
+
 export default function AuthBox({
     handleClose,
     onSuccess,
+    title,
 }: {
     handleClose: () => void;
     onSuccess?: () => void;
+    title?: string;
 }) {
     const dispatch = useAppDispatch();
     const [mode, setMode] = useState<"register" | "signin">("register");
@@ -58,12 +87,13 @@ export default function AuthBox({
     return (
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex flex-col gap-5 fixed max-w-137 w-full max-h-138 h-full rounded-2xl p-10 z-20 bg-white border-neutral-400 "
+        className="relative flex flex-col gap-5 fixed max-w-137 w-full max-h-138 h-full rounded-2xl p-10 z-20 bg-white border-neutral-400 "
       >
+        {loading && <Spinner />}
         <h1 className="font-semibold tracking-tight text-3xl w-xs ">
-          Your first session is just a signup away.
+          {title ?? "Your first session is just a signup away."}
         </h1>
-        <GoogleLoginBtn onSuccess={() => onSuccess?.()} />
+        <GoogleLoginBtn onSuccess={() => onSuccess?.()} onLoadingChange={setLoading} />
         <div className="flex gap-3 items-center text-neutral-500">
           <div className="w-full h-[1px] bg-neutral-200" />
           or

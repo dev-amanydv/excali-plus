@@ -17,6 +17,7 @@ interface UIState {
     sidebarWidth: number,
     isMobileMenuOpen: boolean,
     isShareDialogOpen: boolean,
+    isSessionExpiredDialogOpen: boolean,
 }
 
 const initialState: UIState = {
@@ -34,6 +35,7 @@ const initialState: UIState = {
     sidebarWidth: 260,
     isMobileMenuOpen: false,
     isShareDialogOpen: false,
+    isSessionExpiredDialogOpen: false,
 }
 
 const MIN_ZOOM = 0.1;
@@ -89,11 +91,14 @@ const uiSlice = createSlice({
         setShareDialogOpen(state, action: PayloadAction<boolean>) {
             state.isShareDialogOpen = action.payload;
         },
+        setSessionExpiredDialogOpen(state, action: PayloadAction<boolean>) {
+            state.isSessionExpiredDialogOpen = action.payload;
+        },
     }
 });
 
 export const {
-    setZoom, zoomAtPoint, resetZoom, setScroll, panBy, resetView, toggleGrid, toogleSnapToGrid, setTheme, setExportDialogOpen, setShortcutDialogOpen, setShareDialogOpen
+    setZoom, zoomAtPoint, resetZoom, setScroll, panBy, resetView, toggleGrid, toogleSnapToGrid, setTheme, setExportDialogOpen, setShortcutDialogOpen, setShareDialogOpen, setSessionExpiredDialogOpen
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

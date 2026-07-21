@@ -6,6 +6,7 @@ import { useAppDispatch } from "@/store/store"
 import { loadElements } from "@/store/slices/canvasSlice"
 import { getStoredToken } from "@/store/slices/userSlice"
 import { api } from "@/utils/api"
+import { useRouter } from "next/navigation"
 import type { ExcalidrawElement } from "@/types/canvas"
 
 export function RoomCanvas({
@@ -15,12 +16,14 @@ export function RoomCanvas({
     roomId?: string | null
     view?: boolean
 }) {
+    const router = useRouter()
     const dispatch = useAppDispatch()
     const [socket, setSocket] = useState<WebSocket | null>(null)
     const needsSocket = !!roomId && !view
     const [status, setStatus] = useState<"connecting" | "ready" | "error">(
         needsSocket ? "connecting" : "ready",
     )
+    const [isAuthed, setIsAuthed] = useState<boolean | null>(null)
     const socketRef = useRef<WebSocket | null>(null)
 
     useEffect(() => {
@@ -43,9 +46,10 @@ export function RoomCanvas({
         if (!needsSocket) return
         const token = getStoredToken()
         if (!token) {
-            setStatus("error")
+            setIsAuthed(false)
             return
         }
+        setIsAuthed(true)
         const ws = new WebSocket(`${WS_URL}?token=${token}`)
         socketRef.current = ws
         ws.onopen = () => {
@@ -69,6 +73,23 @@ export function RoomCanvas({
         }
     }, [needsSocket, roomId])
 
+    useEffect(() => {
+        if (isAuthed === false) {
+            const currentPath = roomId
+                ? `/canvas/${roomId}${view ? "?view=1" : ""}`
+                : "/"
+            router.replace(`/auth/signin?redirect=${encodeURIComponent(currentPath)}`)
+        }
+    }, [isAuthed, roomId, view, router])
+
+    if (isAuthed === null && needsSocket) {
+        return (
+            <div className="w-screen h-screen flex items-center justify-center text-neutral-500">
+                Checking authentication…
+            </div>
+        )
+    }
+
     if (needsSocket && status === "connecting") {
         return (
             <div className="w-screen h-screen flex items-center justify-center text-neutral-500">
@@ -81,7 +102,7 @@ export function RoomCanvas({
         return (
             <div className="w-screen h-screen flex flex-col gap-2 items-center justify-center text-neutral-600">
                 <p className="font-medium">Couldn&apos;t connect to the session.</p>
-                <p className="text-sm">Please sign in and try again.</p>
+                <p className="text-sm">Please try again later.</p>
             </div>
         )
     }
