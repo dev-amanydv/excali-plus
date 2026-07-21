@@ -9,13 +9,11 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json ./
 COPY apps/excali-plus/package.json apps/excali-plus/
 COPY apps/http-backend/package.json apps/http-backend/
 COPY apps/ws-backend/package.json apps/ws-backend/
-COPY apps/shared-canvas/package.json apps/shared-canvas/
 COPY packages/common/package.json packages/common/
 COPY packages/ui/package.json packages/ui/
 COPY packages/db/package.json packages/db/
 COPY packages/backend-common/package.json packages/backend-common/
 COPY packages/eslint-config/package.json packages/eslint-config/
-COPY packages/tailwind-config/package.json packages/tailwind-config/
 COPY packages/typescript-config/package.json packages/typescript-config/
 RUN pnpm install --frozen-lockfile
 
@@ -43,6 +41,4 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/excali-plus/public ./apps/ex
 USER nextjs
 EXPOSE 3000
 
-CMD ["node", "apps/excali-plus/server.js"]
-
-#   build command:- docker build -f apps/excali-plus/Dockerfile -t excali-plus .
+CMD ["node", "server.js"]
