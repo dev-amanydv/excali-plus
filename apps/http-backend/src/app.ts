@@ -19,7 +19,12 @@ app.get("/", (req, res) => {
     message: "Server is running",
   });
 });
-
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    message: "Server running healthy",
+    status: "success"
+  })
+})
 app.use("/auth", authRouter);
 app.use("/rooms", roomRouter);
 app.use("/chats", chatRouter);
