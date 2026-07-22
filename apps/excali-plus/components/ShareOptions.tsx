@@ -53,11 +53,9 @@ const DialogBox = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   const user = useAppSelector((s) => s.user);
   const currentRoomId = useCurrentRoomId();
 
-  // If we're already inside a room, open straight into the collaboration panel.
   const [step, setStep] = useState<Step>(currentRoomId ? "collab" : "options");
   const [busy, setBusy] = useState(false);
   const [shareLink, setShareLink] = useState<string>("");
-  // What to do after a successful login inside the dialog.
   const [pendingAction, setPendingAction] = useState<"session" | "export" | null>(
     null,
   );
@@ -136,11 +134,22 @@ const DialogBox = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   };
 
   return (
-    <div
-      onClick={() => setOpen(false)}
-      className="absolute inset-0 z-20 bg-black/20 flex justify-center items-center"
-    >
-      {renderBox()}
+    <div className="absolute inset-0 z-20 bg-black/20 flex justify-center items-center">
+      <div
+        onClick={() => setOpen(false)}
+        className="absolute inset-0"
+      />
+      <div className="relative">
+        <button
+          onClick={handleClose}
+          className="absolute -top-2 -right-2 z-30 bg-white rounded-full p-1.5 shadow-sm border border-neutral-200 text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 cursor-pointer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+        {renderBox()}
+      </div>
     </div>
   );
 };
