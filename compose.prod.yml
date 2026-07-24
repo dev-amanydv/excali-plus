@@ -21,6 +21,8 @@ services:
       timeout: 30s
       retries: 5
       start_period: 30s
+    networks:
+      - excali-network
 
   excali-ws:
     restart: unless-stopped
@@ -36,3 +38,9 @@ services:
         limits:
           cpus: "0.5"
           memory: 512MB
+    networks:
+      - excali-network
+
+networks:
+  excali-network:
+    name: excali-network
